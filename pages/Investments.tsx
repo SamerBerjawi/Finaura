@@ -1,0 +1,190 @@
+import React, { useState, useMemo } from 'react';
+import { Account, InvestmentTransaction, Transaction } from '../types';
+import { BTN_PRIMARY_STYLE } from '../constants';
+import Card from '../components/Card';
+import { formatCurrency } from '../utils';
+import AddInvestmentTransactionModal from '../components/AddInvestmentTransactionModal';
+
+interface InvestmentsProps {
+    investmentAccounts: Account[];
+    cashAccounts: Account[];
+    investmentTransactions: InvestmentTransaction[];
+    saveInvestmentTransaction: (invTx: Omit<InvestmentTransaction, 'id'> & { id?: string }, cashTx?: Omit<Transaction, 'id'>) => void;
+    deleteInvestmentTransaction: (id: string) => void;
+}
+
+// Mock data for current prices, as we don't have a live API
+const MOCK_CURRENT_PRICES: Record<string, number> = {
+  'AAPL': 175.50,
+  'GOOGL': 115.20,
+  'TSLA': 240.80,
+  'MSFT': 310.00,
+  'BTC': 68000.00,
+};
+
+const InvestmentSummaryCard: React.FC<{ title: string; value: string; change?: string; changeColor?: string; icon: string }> = ({ title, value, change, changeColor, icon }) => (
+    <Card className="flex items-start justify-between">
+        <div>
+            <p className="text-light-text-secondary dark:text-dark-text-secondary text-sm font-medium">{title}</p>
+            <p className="text-2xl font-bold mt-1">{value}</p>
+            {change && <p className={`text-sm font-semibold mt-1 ${changeColor}`}>{change}</p>}
+        </div>
+        <div className="w-12 h-12 rounded-full flex items-center justify-center bg-primary-100 dark:bg-primary-900/50">
+            <span className="material-symbols-outlined text-3xl text-primary-500">{icon}</span>
+        </div>
+    </Card>
+);
+
+const Investments: React.FC<InvestmentsProps> = ({ investmentAccounts, cashAccounts, investmentTransactions, saveInvestmentTransaction, deleteInvestmentTransaction }) => {
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingTransaction, setEditingTransaction] = useState<InvestmentTransaction | null>(null);
+
+    const { holdings, totalValue, totalCostBasis } = useMemo(() => {
+        const holdingsMap: Record<string, {
+            symbol: string;
+            name: string;
+            quantity: number;
+            totalCost: number;
+        }> = {};
+
+        // Sort transactions by date to process them chronologically
+        [...investmentTransactions].sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime()).forEach(tx => {
+            if (!holdingsMap[tx.symbol]) {
+                holdingsMap[tx.symbol] = { symbol: tx.symbol, name: tx.name, quantity: 0, totalCost: 0 };
+            }
+            const holding = holdingsMap[tx.symbol];
+            if (tx.type === 'buy') {
+                holding.quantity += tx.quantity;
+                holding.totalCost += tx.quantity * tx.price;
+            } else { // sell
+                // Reduce cost basis proportionally on sell
+                const avgCost = holding.quantity > 0 ? holding.totalCost / holding.quantity : 0;
+                holding.totalCost -= tx.quantity * avgCost;
+                holding.quantity -= tx.quantity;
+            }
+        });
+
+        // Filter out holdings with zero or negative quantity
+        const filteredHoldings = Object.values(holdingsMap).filter(h => h.quantity > 0.000001); // Use a small epsilon for floating point comparison
+
+        const totalValue = filteredHoldings.reduce((sum, holding) => {
+            const currentPrice = MOCK_CURRENT_PRICES[holding.symbol] || 0;
+            return sum + (holding.quantity * currentPrice);
+        }, 0);
+        
+        const totalCostBasis = filteredHoldings.reduce((sum, holding) => sum + holding.totalCost, 0);
+
+        return { holdings: filteredHoldings, totalValue, totalCostBasis };
+    }, [investmentTransactions]);
+
+    const handleOpenModal = (tx?: InvestmentTransaction) => {
+        setEditingTransaction(tx || null);
+        setIsModalOpen(true);
+    };
+
+    const totalGainLoss = totalValue - totalCostBasis;
+    const totalGainLossPercent = totalCostBasis > 0 ? (totalGainLoss / totalCostBasis) * 100 : 0;
+
+    const sortedTransactions = [...investmentTransactions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    return (
+        <div className="space-y-8">
+            {isModalOpen && (
+                <AddInvestmentTransactionModal
+                    onClose={() => setIsModalOpen(false)}
+                    onSave={saveInvestmentTransaction}
+                    investmentAccounts={investmentAccounts}
+                    cashAccounts={cashAccounts}
+                    transactionToEdit={editingTransaction}
+                />
+            )}
+            <header className="flex justify-between items-center">
+                <div>
+                    <h2 className="text-3xl font-bold text-light-text dark:text-dark-text">Investments</h2>
+                    <p className="text-light-text-secondary dark:text-dark-text-secondary mt-1">Track your portfolio performance and transactions.</p>
+                </div>
+                <button onClick={() => handleOpenModal()} className={BTN_PRIMARY_STYLE}>Add Transaction</button>
+            </header>
+
+            {/* Summary Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <InvestmentSummaryCard title="Portfolio Value" value={formatCurrency(totalValue, 'EUR')} icon="account_balance" />
+                <InvestmentSummaryCard 
+                    title="Total Gain / Loss" 
+                    value={formatCurrency(totalGainLoss, 'EUR')} 
+                    change={`${totalGainLoss >= 0 ? '+' : ''}${totalGainLossPercent.toFixed(2)}%`}
+                    changeColor={totalGainLoss >= 0 ? 'text-green-500' : 'text-red-500'}
+                    icon={totalGainLoss >= 0 ? 'trending_up' : 'trending_down'}
+                />
+                <InvestmentSummaryCard title="Investment Accounts" value={String(investmentAccounts.length)} icon="wallet" />
+            </div>
+            
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                {/* Holdings Section */}
+                <div className="space-y-4">
+                     <h3 className="text-xl font-semibold">Holdings</h3>
+                     <Card>
+                         <div className="divide-y divide-black/5 dark:divide-white/5">
+                            {holdings.map(holding => {
+                                const currentValue = (MOCK_CURRENT_PRICES[holding.symbol] || 0) * holding.quantity;
+                                const gainLoss = currentValue - holding.totalCost;
+                                return (
+                                <div key={holding.symbol} className="grid grid-cols-3 items-center p-4">
+                                    <div>
+                                        <p className="font-bold text-lg">{holding.symbol}</p>
+                                        <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary truncate">{holding.name}</p>
+                                    </div>
+                                    <div className="text-center">
+                                        <p className="font-semibold">{holding.quantity.toLocaleString(undefined, { maximumFractionDigits: 8 })}</p>
+                                        <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary">
+                                            @ {formatCurrency(MOCK_CURRENT_PRICES[holding.symbol] || 0, 'EUR')}
+                                        </p>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="font-bold">{formatCurrency(currentValue, 'EUR')}</p>
+                                        <p className={`text-sm font-semibold ${gainLoss >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                            {gainLoss >= 0 ? '+' : ''}{formatCurrency(gainLoss, 'EUR')}
+                                        </p>
+                                    </div>
+                                </div>
+                            )})}
+                         </div>
+                         {holdings.length === 0 && <p className="text-center py-8 text-light-text-secondary dark:text-dark-text-secondary">No holdings to display.</p>}
+                     </Card>
+                </div>
+
+                {/* Recent Transactions Section */}
+                <div className="space-y-4">
+                    <h3 className="text-xl font-semibold">Recent Transactions</h3>
+                    <Card>
+                        <table className="w-full text-left text-sm">
+                            <thead>
+                                <tr className="border-b border-black/10 dark:border-white/10">
+                                    <th className="p-2 font-semibold">Date</th>
+                                    <th className="p-2 font-semibold">Symbol</th>
+                                    <th className="p-2 font-semibold">Type</th>
+                                    <th className="p-2 font-semibold text-right">Amount</th>
+                                    <th className="p-2 font-semibold text-right">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {sortedTransactions.slice(0, 10).map(tx => (
+                                <tr key={tx.id} className="border-b border-black/5 dark:border-white/5 last:border-b-0 hover:bg-black/5 dark:hover:bg-white/5">
+                                    <td className="p-2">{new Date(tx.date).toLocaleDateString()}</td>
+                                    <td className="p-2 font-bold">{tx.symbol}</td>
+                                    <td className={`p-2 font-semibold capitalize ${tx.type === 'buy' ? 'text-green-500' : 'text-red-500'}`}>{tx.type}</td>
+                                    <td className="p-2 text-right">{tx.quantity} @ {formatCurrency(tx.price, 'EUR')}</td>
+                                    <td className="p-2 font-semibold text-right">{formatCurrency(tx.quantity * tx.price, 'EUR')}</td>
+                                </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                        {investmentTransactions.length === 0 && <p className="text-center py-8 text-light-text-secondary dark:text-dark-text-secondary">No investment transactions yet.</p>}
+                    </Card>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default Investments;

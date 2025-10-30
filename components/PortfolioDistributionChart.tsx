@@ -2,10 +2,12 @@ import React from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { formatCurrency } from '../utils';
 
+// FIX: Add an index signature to the ChartDataItem interface to make it compatible with the 'data' prop of recharts components, which expects a generic object.
 interface ChartDataItem {
   name: string;
   value: number;
   color: string;
+  [key: string]: any;
 }
 
 interface PortfolioDistributionChartProps {

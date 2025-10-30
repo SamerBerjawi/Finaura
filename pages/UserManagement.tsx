@@ -11,7 +11,7 @@ interface UserManagementProps {
   allUsers: User[];
   onUpdateUser: (email: string, updates: Partial<User>) => void;
   onDeleteUser: (email: string) => void;
-  onInviteUser: (newUser: Pick<User, 'firstName' | 'lastName' | 'email'>) => void;
+  onInviteUser: (newUser: Pick<User, 'firstName' | 'lastName' | 'email' | 'role'>) => void;
   onAdminPasswordReset: (email: string) => void;
 }
 
@@ -59,6 +59,11 @@ const UserManagement: React.FC<UserManagementProps> = ({ currentUser, allUsers, 
 
     const handleToggleStatus = (user: User) => {
         onUpdateUser(user.email, { status: user.status === 'Active' ? 'Inactive' : 'Active' });
+        setActiveActionMenu(null);
+    };
+
+    const handleToggleAdmin = (user: User) => {
+        onUpdateUser(user.email, { role: user.role === 'Administrator' ? 'Member' : 'Administrator' });
         setActiveActionMenu(null);
     };
 
@@ -123,46 +128,47 @@ const UserManagement: React.FC<UserManagementProps> = ({ currentUser, allUsers, 
 
             <Card>
                 <div className="overflow-x-auto">
-                    <table className="w-full text-left">
+                    <table className="w-full text-left table-fixed">
                         <thead>
                             <tr className="border-b border-black/10 dark:border-white/10">
-                                <th className="p-4 text-sm uppercase font-semibold text-light-text-secondary dark:text-dark-text-secondary">User</th>
-                                <th className="p-4 text-sm uppercase font-semibold text-light-text-secondary dark:text-dark-text-secondary">Role</th>
-                                <th className="p-4 text-sm uppercase font-semibold text-light-text-secondary dark:text-dark-text-secondary">Status</th>
-                                <th className="p-4 text-sm uppercase font-semibold text-light-text-secondary dark:text-dark-text-secondary">Last Login</th>
-                                <th className="p-4"></th>
+                                <th className="p-4 text-sm uppercase font-semibold text-light-text-secondary dark:text-dark-text-secondary w-2/5">User</th>
+                                <th className="p-4 text-sm uppercase font-semibold text-light-text-secondary dark:text-dark-text-secondary w-1/6">Role</th>
+                                <th className="p-4 text-sm uppercase font-semibold text-light-text-secondary dark:text-dark-text-secondary w-1/6">Status</th>
+                                <th className="p-4 text-sm uppercase font-semibold text-light-text-secondary dark:text-dark-text-secondary w-1/4">Last Login</th>
+                                <th className="p-4 w-auto text-right"></th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-black/5 dark:divide-white/5">
                             {allUsers.map(user => (
                                 <tr key={user.email}>
-                                    <td className="p-4">
+                                    <td className="p-4 align-middle">
                                         <div className="flex items-center gap-4">
                                             <img src={user.profilePictureUrl} alt="" className="w-10 h-10 rounded-full object-cover"/>
                                             <div>
                                                 <p className="font-semibold text-light-text dark:text-dark-text">{user.firstName} {user.lastName} {user.email === currentUser.email && <span className="text-xs text-primary-500">(You)</span>}</p>
-                                                <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary">{user.email}</p>
+                                                <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary truncate">{user.email}</p>
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="p-4 text-light-text dark:text-dark-text">{user.role}</td>
-                                    <td className="p-4">
+                                    <td className="p-4 text-light-text dark:text-dark-text align-middle">{user.role}</td>
+                                    <td className="p-4 align-middle">
                                         <span className={`px-2 py-1 text-xs font-semibold rounded-full ${user.status === 'Active' ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'}`}>{user.status}</span>
                                     </td>
-                                    <td className="p-4 text-light-text-secondary dark:text-dark-text-secondary">{new Date(user.lastLogin).toLocaleString()}</td>
-                                    <td className="p-4 text-right">
+                                    <td className="p-4 text-light-text-secondary dark:text-dark-text-secondary align-middle">{new Date(user.lastLogin).toLocaleString()}</td>
+                                    <td className="p-4 text-right align-middle">
                                         {user.email !== currentUser.email && (
                                             <div className="relative" ref={activeActionMenu === user.email ? actionMenuRef : null}>
                                                 <button onClick={() => setActiveActionMenu(activeActionMenu === user.email ? null : user.email)} className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/5">
                                                     <span className="material-symbols-outlined">more_vert</span>
                                                 </button>
                                                 {activeActionMenu === user.email && (
-                                                    <div className="absolute right-0 mt-2 w-48 bg-light-card dark:bg-dark-card rounded-md shadow-lg border border-black/5 dark:border-white/10 z-10 py-1">
-                                                        <button onClick={() => handleEditClick(user)} className="w-full text-left flex items-center gap-2 px-4 py-2 text-sm hover:bg-black/5 dark:hover:bg-white/5">Edit</button>
-                                                        <button onClick={() => handleToggleStatus(user)} className="w-full text-left flex items-center gap-2 px-4 py-2 text-sm hover:bg-black/5 dark:hover:bg-white/5">{user.status === 'Active' ? 'Deactivate' : 'Activate'}</button>
+                                                    <div className="absolute right-0 mt-2 w-56 bg-light-card dark:bg-dark-card rounded-md shadow-lg border border-black/5 dark:border-white/10 z-10 py-1">
+                                                        <button onClick={() => handleEditClick(user)} className="w-full text-left flex items-center gap-2 px-4 py-2 text-sm hover:bg-black/5 dark:hover:bg-white/5">Edit User</button>
+                                                        <button onClick={() => handleToggleAdmin(user)} className="w-full text-left flex items-center gap-2 px-4 py-2 text-sm hover:bg-black/5 dark:hover:bg-white/5">{user.role === 'Administrator' ? 'Revoke Admin' : 'Make Administrator'}</button>
+                                                        <button onClick={() => handleToggleStatus(user)} className="w-full text-left flex items-center gap-2 px-4 py-2 text-sm hover:bg-black/5 dark:hover:bg-white/5">{user.status === 'Active' ? 'Deactivate User' : 'Activate User'}</button>
                                                         <button onClick={() => { onAdminPasswordReset(user.email); setActiveActionMenu(null); }} className="w-full text-left flex items-center gap-2 px-4 py-2 text-sm hover:bg-black/5 dark:hover:bg-white/5">Reset Password</button>
                                                         <div className="my-1 h-px bg-gray-200 dark:bg-gray-700"></div>
-                                                        <button onClick={() => handleDeleteClick(user)} className="w-full text-left flex items-center gap-2 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-500/10">Delete</button>
+                                                        <button onClick={() => handleDeleteClick(user)} className="w-full text-left flex items-center gap-2 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-500/10">Delete User</button>
                                                     </div>
                                                 )}
                                             </div>

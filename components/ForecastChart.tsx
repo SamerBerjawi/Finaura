@@ -72,6 +72,8 @@ const ForecastChart: React.FC<ForecastChartProps> = ({ data, oneTimeGoals, lowes
                   <Label value={goal.name} position="insideTopRight" fill="#FBBF24" fontSize={12} angle={-90} dx={10} dy={10} />
               </ReferenceLine>
           ))}
+          <Area type="monotone" dataKey="value" name="Projected Balance" stroke="#6366F1" fill="url(#colorValue)" strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} />
+          {/* FIX: Removed the invalid 'isFront' prop. The ReferenceDot is rendered after the Area, so it will appear on top. */}
           {data.length > 0 && lowestPoint && (
               <ReferenceDot
                   x={lowestPoint.date}
@@ -80,12 +82,10 @@ const ForecastChart: React.FC<ForecastChartProps> = ({ data, oneTimeGoals, lowes
                   fill="#F97316"
                   stroke="white"
                   strokeWidth={2}
-                  isFront={true}
               >
                   <Label value="Lowest Point" position="top" offset={15} fill="#F97316" fontSize={12} fontWeight="bold" />
               </ReferenceDot>
           )}
-          <Area type="monotone" dataKey="value" name="Projected Balance" stroke="#6366F1" fill="url(#colorValue)" strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} />
         </AreaChart>
       </ResponsiveContainer>
     </div>

@@ -339,7 +339,7 @@ You have been automatically logged in.`);
       localStorage.removeItem(`finaura_data_${email}`);
   };
 
-  const handleInviteUser = (newUserInfo: Pick<User, 'firstName' | 'lastName' | 'email'>) => {
+  const handleInviteUser = (newUserInfo: Pick<User, 'firstName' | 'lastName' | 'email' | 'role'>) => {
       if (allUsers[newUserInfo.email]) {
           alert('User with this email already exists.');
           return;
@@ -347,7 +347,7 @@ You have been automatically logged in.`);
       const userProfile: User = {
           ...newUserInfo,
           profilePictureUrl: `https://i.pravatar.cc/150?u=${newUserInfo.email}`,
-          role: 'Member',
+          role: newUserInfo.role,
           status: 'Active',
           lastLogin: new Date().toISOString(),
           is2FAEnabled: false,
@@ -359,7 +359,7 @@ You have been automatically logged in.`);
       localStorage.setItem('finaura_users', JSON.stringify(updatedAllUsers));
       localStorage.setItem(`finaura_data_${newUserInfo.email}`, JSON.stringify(initialFinancialData));
       
-      alert(`User ${newUserInfo.email} invited with temporary password: ${tempPassword}`);
+      alert(`User ${newUserInfo.email} invited as ${newUserInfo.role} with temporary password: ${tempPassword}`);
   };
 
     const handleAdminPasswordReset = (email: string) => {

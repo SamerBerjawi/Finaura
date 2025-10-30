@@ -5,7 +5,7 @@ import { BTN_PRIMARY_STYLE, BTN_SECONDARY_STYLE, INPUT_BASE_STYLE, SELECT_WRAPPE
 import { formatCurrency, convertToEur } from '../utils';
 import RecurringTransactionModal from '../components/RecurringTransactionModal';
 import Modal from '../components/Modal';
-import CalendarView from '../components/CalendarView';
+import ScheduleHeatmap from '../components/ScheduleHeatmap';
 
 // --- Types for this merged page ---
 export type ScheduledItem = {
@@ -89,9 +89,8 @@ const ScheduledItemRow: React.FC<{
         setIsConfirmingPayment(false);
     };
 
-    const dueDate = new Date(item.date);
-    // Adjust for timezone display issues by parsing as UTC
-    const day = new Date(dueDate.getUTCFullYear(), dueDate.getUTCMonth(), dueDate.getUTCDate()).getDate();
+    const dueDate = new Date(item.date.replace(/-/g, '/'));
+    const day = dueDate.getDate();
     const month = dueDate.toLocaleString('default', { month: 'short' }).toUpperCase();
     
     return (
@@ -148,7 +147,6 @@ interface ScheduleProps {
 const Schedule: React.FC<ScheduleProps> = (props) => {
     const { recurringTransactions, saveRecurringTransaction, deleteRecurringTransaction, billsAndPayments, saveBillPayment, deleteBillPayment, markBillAsPaid, accounts, incomeCategories, expenseCategories } = props;
 
-    const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
     const [isRecurringModalOpen, setIsRecurringModalOpen] = useState(false);
     const [isBillModalOpen, setIsBillModalOpen] = useState(false);
     const [editingTransaction, setEditingTransaction] = useState<RecurringTransaction | null>(null);
@@ -168,8 +166,44 @@ const Schedule: React.FC<ScheduleProps> = (props) => {
         const allUpcomingItems: ScheduledItem[] = [];
 
         recurringTransactions.forEach(rt => {
+            // Calculate correct upcoming date, advancing it if it's in the past
+            let nextDate = new Date(rt.nextDueDate.replace(/-/g, '/'));
+            const todayLocal = new Date();
+            todayLocal.setHours(0, 0, 0, 0);
+
+            while (nextDate < todayLocal && (!rt.endDate || nextDate < new Date(rt.endDate.replace(/-/g, '/')))) {
+                const interval = rt.frequencyInterval || 1;
+                switch(rt.frequency) {
+                    case 'daily':
+                        nextDate.setDate(nextDate.getDate() + interval);
+                        break;
+                    case 'weekly':
+                        nextDate.setDate(nextDate.getDate() + 7 * interval);
+                        break;
+                    case 'monthly': {
+                        const d = rt.dueDateOfMonth || new Date(rt.startDate.replace(/-/g, '/')).getDate();
+                        nextDate.setMonth(nextDate.getMonth() + interval, 1);
+                        const lastDayOfNextMonth = new Date(nextDate.getFullYear(), nextDate.getMonth() + 1, 0).getDate();
+                        nextDate.setDate(Math.min(d, lastDayOfNextMonth));
+                        break;
+                    }
+                    case 'yearly': {
+                        const d = rt.dueDateOfMonth || new Date(rt.startDate.replace(/-/g, '/')).getDate();
+                        const m = new Date(rt.startDate.replace(/-/g, '/')).getMonth();
+                        nextDate.setFullYear(nextDate.getFullYear() + interval);
+                        const lastDayOfNextMonth = new Date(nextDate.getFullYear(), m + 1, 0).getDate();
+                        nextDate.setMonth(m, Math.min(d, lastDayOfNextMonth));
+                        break;
+                    }
+                }
+            }
+
+            if (rt.endDate && nextDate > new Date(rt.endDate.replace(/-/g, '/'))) {
+                return;
+            }
+
             allUpcomingItems.push({
-                id: rt.id, isRecurring: true, date: rt.nextDueDate, description: rt.description,
+                id: rt.id, isRecurring: true, date: nextDate.toISOString().split('T')[0], description: rt.description,
                 amount: rt.type === 'expense' ? -rt.amount : rt.amount,
                 accountName: rt.type === 'transfer' ? `${accountMap[rt.accountId]} → ${accountMap[rt.toAccountId!]}` : accountMap[rt.accountId],
                 type: rt.type, originalItem: rt, isTransfer: rt.type === 'transfer'
@@ -183,10 +217,10 @@ const Schedule: React.FC<ScheduleProps> = (props) => {
             });
         });
 
-        allUpcomingItems.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        allUpcomingItems.sort((a, b) => new Date(a.date.replace(/-/g, '/')).getTime() - new Date(b.date.replace(/-/g, '/')).getTime());
         
         allUpcomingItems.forEach(item => {
-            const dueDate = new Date(item.date);
+            const dueDate = new Date(item.date.replace(/-/g, '/'));
             if (dueDate >= today && dueDate <= dateIn30Days) {
                 const amount = convertToEur(item.amount, 'EUR');
                 if (amount > 0) income30 += amount;
@@ -223,7 +257,27 @@ const Schedule: React.FC<ScheduleProps> = (props) => {
             else deleteBillPayment(id);
         }
     };
+
+    const today = new Date(); today.setHours(0,0,0,0);
+    const dateIn7Days = new Date(today); dateIn7Days.setDate(today.getDate() + 7);
+    const dateIn30Days = new Date(today); dateIn30Days.setDate(today.getDate() + 30);
+
+    const groups = {
+        next7Days: upcomingItems.filter(item => new Date(item.date.replace(/-/g, '/')) <= dateIn7Days),
+        next30Days: upcomingItems.filter(item => new Date(item.date.replace(/-/g, '/')) > dateIn7Days && new Date(item.date.replace(/-/g, '/')) <= dateIn30Days),
+        later: upcomingItems.filter(item => new Date(item.date.replace(/-/g, '/')) > dateIn30Days)
+    };
     
+    const renderGroup = (title: string, items: ScheduledItem[]) => {
+        if (items.length === 0) return null;
+        return (
+            <div key={title}>
+                <h3 className="text-xl font-semibold mb-2 text-light-text dark:text-dark-text">{title}</h3>
+                <Card><div className="divide-y divide-black/5 dark:divide-white/5 -m-4">{items.map(item => <ScheduledItemRow key={item.id} item={item} accounts={accounts} onEdit={handleEdit} onDelete={handleDelete} onMarkAsPaid={markBillAsPaid}/>)}</div></Card>
+            </div>
+        )
+    };
+
     const renderPaidItem = (bill: BillPayment) => (
          <div className="flex items-center justify-between p-4 opacity-70">
             <div className="flex items-center gap-4">
@@ -236,29 +290,34 @@ const Schedule: React.FC<ScheduleProps> = (props) => {
              <p className={`font-semibold text-lg ${bill.type === 'deposit' ? 'text-green-500' : 'text-red-500'}`}>{formatCurrency(bill.amount, bill.currency)}</p>
         </div>
     );
-    
-    const ListView = () => {
-        const today = new Date(); today.setHours(0,0,0,0);
-        const dateIn7Days = new Date(today); dateIn7Days.setDate(today.getDate() + 7);
-        const dateIn30Days = new Date(today); dateIn30Days.setDate(today.getDate() + 30);
 
-        const groups = {
-            next7Days: upcomingItems.filter(item => new Date(item.date) <= dateIn7Days),
-            next30Days: upcomingItems.filter(item => new Date(item.date) > dateIn7Days && new Date(item.date) <= dateIn30Days),
-            later: upcomingItems.filter(item => new Date(item.date) > dateIn30Days)
-        };
-        
-        const renderGroup = (title: string, items: ScheduledItem[]) => {
-            if (items.length === 0) return null;
-            return (
-                <div key={title}>
-                    <h3 className="text-xl font-semibold mb-2 text-light-text dark:text-dark-text">{title}</h3>
-                    <Card><div className="divide-y divide-black/5 dark:divide-white/5 -m-4">{items.map(item => <ScheduledItemRow key={item.id} item={item} accounts={accounts} onEdit={handleEdit} onDelete={handleDelete} onMarkAsPaid={markBillAsPaid}/>)}</div></Card>
+    return (
+        <div className="space-y-8">
+            {isRecurringModalOpen && <RecurringTransactionModal onClose={() => setIsRecurringModalOpen(false)} onSave={(d)=>{saveRecurringTransaction(d); setIsRecurringModalOpen(false);}} accounts={accounts} incomeCategories={incomeCategories} expenseCategories={expenseCategories} recurringTransactionToEdit={editingTransaction}/>}
+            {isBillModalOpen && <BillPaymentModal bill={editingBill} onSave={(d)=>{saveBillPayment(d); setIsBillModalOpen(false);}} onClose={() => setIsBillModalOpen(false)} accounts={accounts} />}
+            
+            <header className="flex flex-wrap justify-between items-center gap-4">
+                <div>
+                    <h2 className="text-3xl font-bold text-light-text dark:text-dark-text">Schedule & Bills</h2>
+                    <p className="text-light-text-secondary dark:text-dark-text-secondary mt-1">Manage your recurring payments, bills, and expected income.</p>
                 </div>
-            )
-        };
+                <div className="flex items-center gap-4">
+                    <button onClick={handleAddBillClick} className={BTN_SECONDARY_STYLE}>Add Bill/Payment</button>
+                    <button onClick={handleAddRecurringClick} className={BTN_PRIMARY_STYLE}>Add Recurring</button>
+                </div>
+            </header>
 
-        return (
+            <Card>
+                <h3 className="text-xl font-semibold mb-4">Next 30 Days Forecast</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                    <div><p className="text-base text-green-500">Income</p><p className="text-2xl font-bold">{formatCurrency(summary.income, 'EUR')}</p></div>
+                    <div><p className="text-base text-red-500">Expenses</p><p className="text-2xl font-bold">{formatCurrency(summary.expenses, 'EUR')}</p></div>
+                    <div><p className="text-base text-light-text-secondary dark:text-dark-text-secondary">Net Cash Flow</p><p className={`text-2xl font-bold ${summary.net >= 0 ? 'text-green-500' : 'text-red-500'}`}>{formatCurrency(summary.net, 'EUR')}</p></div>
+                </div>
+            </Card>
+            
+            <ScheduleHeatmap items={upcomingItems} />
+            
             <div className="space-y-6">
                  {renderGroup('Next 7 Days', groups.next7Days)}
                  {renderGroup('Next 30 Days', groups.next30Days)}
@@ -275,69 +334,6 @@ const Schedule: React.FC<ScheduleProps> = (props) => {
                     </div>
                  )}
             </div>
-        );
-    };
-
-    return (
-        <div className="space-y-8">
-            {isRecurringModalOpen && <RecurringTransactionModal onClose={() => setIsRecurringModalOpen(false)} onSave={(d)=>{saveRecurringTransaction(d); setIsRecurringModalOpen(false);}} accounts={accounts} incomeCategories={incomeCategories} expenseCategories={expenseCategories} recurringTransactionToEdit={editingTransaction}/>}
-            {isBillModalOpen && <BillPaymentModal bill={editingBill} onSave={(d)=>{saveBillPayment(d); setIsBillModalOpen(false);}} onClose={() => setIsBillModalOpen(false)} accounts={accounts} />}
-            
-            <header className="flex flex-wrap justify-between items-center gap-4">
-                <div>
-                    <h2 className="text-3xl font-bold text-light-text dark:text-dark-text">Schedule & Bills</h2>
-                    <p className="text-light-text-secondary dark:text-dark-text-secondary mt-1">Manage your recurring payments, bills, and expected income.</p>
-                </div>
-                <div className="flex items-center gap-4">
-                    <div className="flex bg-light-bg dark:bg-dark-bg p-1 rounded-lg shadow-neu-inset-light dark:shadow-neu-inset-dark h-11 items-center">
-                        <button
-                            onClick={() => setViewMode('calendar')}
-                            className={`flex items-center gap-2 text-center text-sm font-semibold py-1.5 px-3 rounded-md transition-all duration-200 ${
-                                viewMode === 'calendar'
-                                ? 'bg-light-card dark:bg-dark-card shadow-neu-raised-light dark:shadow-neu-raised-dark'
-                                : 'text-light-text-secondary dark:text-dark-text-secondary'
-                            }`}
-                        >
-                            <span className="material-symbols-outlined text-base">calendar_month</span>
-                            Calendar
-                        </button>
-                        <button
-                            onClick={() => setViewMode('list')}
-                            className={`flex items-center gap-2 text-center text-sm font-semibold py-1.5 px-3 rounded-md transition-all duration-200 ${
-                                viewMode === 'list'
-                                ? 'bg-light-card dark:bg-dark-card shadow-neu-raised-light dark:shadow-neu-raised-dark'
-                                : 'text-light-text-secondary dark:text-dark-text-secondary'
-                            }`}
-                        >
-                            <span className="material-symbols-outlined text-base">view_list</span>
-                            List
-                        </button>
-                    </div>
-                    <button onClick={handleAddBillClick} className={BTN_SECONDARY_STYLE}>Add Bill/Payment</button>
-                    <button onClick={handleAddRecurringClick} className={BTN_PRIMARY_STYLE}>Add Recurring</button>
-                </div>
-            </header>
-
-            <Card>
-                <h3 className="text-xl font-semibold mb-4">Next 30 Days Forecast</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
-                    <div><p className="text-base text-green-500">Income</p><p className="text-2xl font-bold">{formatCurrency(summary.income, 'EUR')}</p></div>
-                    <div><p className="text-base text-red-500">Expenses</p><p className="text-2xl font-bold">{formatCurrency(summary.expenses, 'EUR')}</p></div>
-                    <div><p className="text-base text-light-text-secondary dark:text-dark-text-secondary">Net Cash Flow</p><p className={`text-2xl font-bold ${summary.net >= 0 ? 'text-green-500' : 'text-red-500'}`}>{formatCurrency(summary.net, 'EUR')}</p></div>
-                </div>
-            </Card>
-            
-            {viewMode === 'calendar' ? (
-                <CalendarView
-                    items={upcomingItems}
-                    accounts={accounts}
-                    onEditItem={handleEdit}
-                    onDeleteItem={handleDelete}
-                    onMarkAsPaid={markBillAsPaid}
-                />
-            ) : (
-                <ListView />
-            )}
         </div>
     );
 };

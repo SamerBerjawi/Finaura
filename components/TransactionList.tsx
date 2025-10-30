@@ -29,7 +29,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, allCate
   };
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
+    const date = new Date(dateString.replace(/-/g, '/'));
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   }
 

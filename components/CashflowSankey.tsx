@@ -93,12 +93,11 @@ const CashflowSankey: React.FC<CashflowSankeyProps> = ({ transactions, expenseCa
         const cashFlowNodeIndex = addNode('Cash Flow', cashFlowColor);
 
         // 2. Process expenses and add expense nodes
-        // The reduce<T>() syntax for generics is not supported in this environment. Switched to typing the accumulator argument `acc` instead. This resolves cascading type errors.
         // The type of `acc` was not being correctly inferred. Typing the initial value of `reduce` ensures `expenseByParentCategory` has the correct type.
         const expenseByParentCategory = transactions
             .filter(tx => tx.type === 'expense' && !tx.transferId)
-            // FIX: Explicitly typing the accumulator `acc` ensures that `expenseByParentCategory` has the correct type, resolving subsequent type errors.
-            .reduce((acc: Record<string, { value: number, color: string }>, tx) => {
+            // FIX: Explicitly typing the accumulator for `reduce` to resolve 'unknown' type errors.
+            .reduce((acc: Record<string, { value: number; color: string; }>, tx) => {
                 const parentCat = findParentCategory(tx.category, expenseCategories);
                 const categoryName = parentCat ? parentCat.name : 'Miscellaneous';
                 const color = parentCat ? parentCat.color : '#A0AEC0';
@@ -107,12 +106,10 @@ const CashflowSankey: React.FC<CashflowSankeyProps> = ({ transactions, expenseCa
                 }
                 acc[categoryName].value += Math.abs(convertToEur(tx.amount, tx.currency));
                 return acc;
-            }, {});
+            }, {} as Record<string, { value: number, color: string }>);
 
-        // The type of `b[1]` was 'unknown' due to the previous error. With the reduce function fixed, this now correctly infers the type.
         const sortedExpenses = Object.entries(expenseByParentCategory).sort((a, b) => b[1].value - a[1].value);
 
-        // The type of `data` was 'unknown'. This is also resolved by fixing the initial `reduce` function.
         sortedExpenses.forEach(([name, data]) => {
             if (data.value > 0) addNode(name, data.color);
         });

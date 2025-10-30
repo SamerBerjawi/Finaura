@@ -128,7 +128,7 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, saveTransacti
             }
         }
         
-        const txDateTime = new Date(tx.date).getTime();
+        const txDateTime = new Date(tx.date.replace(/-/g, '/')).getTime();
         const matchStartDate = !startDateTime || txDateTime >= startDateTime.getTime();
         const matchEndDate = !endDateTime || txDateTime <= endDateTime.getTime();
 
@@ -138,14 +138,14 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, saveTransacti
     return transactionList.sort((a, b) => {
       switch (sortBy) {
         case 'date-asc':
-          return new Date(a.date).getTime() - new Date(b.date).getTime();
+          return new Date(a.date.replace(/-/g, '/')).getTime() - new Date(b.date.replace(/-/g, '/')).getTime();
         case 'amount-desc':
           return b.amount - a.amount;
         case 'amount-asc':
           return a.amount - b.amount;
         case 'date-desc':
         default:
-          return new Date(b.date).getTime() - new Date(a.date).getTime();
+          return new Date(b.date.replace(/-/g, '/')).getTime() - new Date(a.date.replace(/-/g, '/')).getTime();
       }
     });
 
@@ -265,7 +265,7 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, saveTransacti
   };
   
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
+    const date = new Date(dateString.replace(/-/g, '/'));
     return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
   }
   

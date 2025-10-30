@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  finaura:
+    build: .
+    container_name: finaura
+    ports:
+      - "4173:4173"
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
+    # Uncomment below if you need persistent data or logs
+    # volumes:
+    #   - finaura_data:/app/data
+    #   - finaura_logs:/app/logs
+
+# Uncomment below if you added volumes
+# volumes:
+#   finaura_data:
+#   finaura_logs:

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Modal from './Modal';
 import { User } from '../types';
-import { INPUT_BASE_STYLE, BTN_PRIMARY_STYLE, BTN_SECONDARY_STYLE } from '../constants';
+import { INPUT_BASE_STYLE, BTN_PRIMARY_STYLE, BTN_SECONDARY_STYLE, SELECT_ARROW_STYLE, SELECT_WRAPPER_STYLE } from '../constants';
 
 interface EditUserModalProps {
   user: User | null;
@@ -12,18 +12,20 @@ interface EditUserModalProps {
 const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onSave }) => {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [role, setRole] = useState<User['role']>('Member');
 
   useEffect(() => {
     if (user) {
       setFirstName(user.firstName);
       setLastName(user.lastName);
+      setRole(user.role);
     }
   }, [user]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (user) {
-      onSave(user.email, { firstName, lastName });
+      onSave(user.email, { firstName, lastName, role });
     }
   };
 
@@ -61,6 +63,22 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onSave }) 
         <div>
             <label className={labelStyle}>Email</label>
             <p className="p-2 text-light-text-secondary dark:text-dark-text-secondary">{user.email}</p>
+        </div>
+        <div>
+            <label htmlFor="role" className={labelStyle}>Role</label>
+            <div className={SELECT_WRAPPER_STYLE}>
+                <select
+                    id="role"
+                    value={role}
+                    onChange={(e) => setRole(e.target.value as User['role'])}
+                    className={INPUT_BASE_STYLE}
+                    required
+                >
+                    <option value="Member">Member</option>
+                    <option value="Administrator">Administrator</option>
+                </select>
+                <div className={SELECT_ARROW_STYLE}><span className="material-symbols-outlined">expand_more</span></div>
+            </div>
         </div>
         <div className="flex justify-end gap-4 pt-4">
           <button type="button" onClick={onClose} className={BTN_SECONDARY_STYLE}>Cancel</button>

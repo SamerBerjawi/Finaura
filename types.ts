@@ -10,9 +10,6 @@ export type Theme = 'light' | 'dark' | 'system';
 
 export type Duration = '7D' | '30D' | '90D' | 'YTD' | '1Y' | '2Y' | '3Y' | '4Y' | '5Y' | '10Y' | 'ALL';
 
-// FIX: Export EconomicScenario type to resolve import error.
-export type EconomicScenario = 'recession' | 'neutral' | 'growth';
-
 export interface Category {
   id: string;
   name: string;
@@ -133,19 +130,6 @@ export interface WidgetConfig {
   title: string;
   w: number;
   h: number;
-}
-
-export interface SankeyNode {
-    name: string;
-    [key: string]: any;
-}
-
-export interface SankeyLink {
-    source: number;
-    target: number;
-
-    value: number;
-    color: string;
 }
 
 export type GoalType = 'one-time' | 'recurring';

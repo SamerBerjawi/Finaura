@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useCallback } from 'react';
-import { User, Transaction, Account, Category, Duration, CategorySpending, Widget, WidgetConfig } from '../types';
+import { User, Transaction, Account, Category, Duration, CategorySpending, Widget, WidgetConfig, DisplayTransaction } from '../types';
 import { formatCurrency, getDateRange, calculateAccountTotals, convertToEur } from '../utils';
 import AddTransactionModal from '../components/AddTransactionModal';
 import { BTN_PRIMARY_STYLE, BTN_SECONDARY_STYLE, LIQUID_ACCOUNT_TYPES } from '../constants';
@@ -81,11 +81,20 @@ const Dashboard: React.FC<DashboardProps> = ({ user, transactions, accounts, sav
     setTransactionModalOpen(false);
   };
 
-  const handleTransactionClick = useCallback((transaction: Transaction) => {
-    setModalTransactions([transaction]);
-    setModalTitle('Transaction Details');
+  const handleTransactionClick = useCallback((clickedTx: DisplayTransaction) => {
+    if (clickedTx.isTransfer && clickedTx.transferId) {
+        const pair = transactions.filter(t => t.transferId === clickedTx.transferId);
+        setModalTransactions(pair);
+        setModalTitle('Transfer Details');
+    } else {
+        const originalTx = transactions.find(t => t.id === clickedTx.id);
+        if (originalTx) {
+            setModalTransactions([originalTx]);
+            setModalTitle('Transaction Details');
+        }
+    }
     setDetailModalOpen(true);
-  }, []);
+  }, [transactions]);
 
   const { filteredTransactions, income, expenses } = useMemo(() => {
     const { start, end } = getDateRange(duration, transactions);
@@ -256,12 +265,50 @@ const Dashboard: React.FC<DashboardProps> = ({ user, transactions, accounts, sav
     setDetailModalOpen(true);
   }, [filteredTransactions, transactions, selectedAccountIds, expenseCategories]);
   
+  const accountMap = useMemo(() => accounts.reduce((map, acc) => { map[acc.id] = acc.name; return map; }, {} as Record<string, string>), [accounts]);
+
   const recentTransactions = useMemo(() => {
-    return transactions
-            .filter(tx => selectedAccountIds.includes(tx.accountId))
-            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-            .slice(0, 5);
-  }, [transactions, selectedAccountIds]);
+    const sortedSourceTransactions = transactions
+      .filter(tx => selectedAccountIds.includes(tx.accountId))
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  
+    const processedTransferIds = new Set<string>();
+    const result: DisplayTransaction[] = [];
+  
+    const fullTransactionsList = [...transactions];
+  
+    for (const tx of sortedSourceTransactions) {
+      if (result.length >= 5) break;
+  
+      if (tx.transferId) {
+        if (processedTransferIds.has(tx.transferId)) continue;
+  
+        const pair = fullTransactionsList.find(t => t.transferId === tx.transferId && t.id !== tx.id);
+        processedTransferIds.add(tx.transferId);
+  
+        if (pair) {
+          const expensePart = tx.amount < 0 ? tx : pair;
+          const incomePart = tx.amount > 0 ? tx : pair;
+          result.push({
+            ...expensePart,
+            id: `transfer-${expensePart.transferId}`,
+            originalId: expensePart.id,
+            amount: Math.abs(expensePart.amount),
+            isTransfer: true,
+            type: 'expense', // for consistency
+            fromAccountName: accountMap[expensePart.accountId] || 'Unknown',
+            toAccountName: accountMap[incomePart.accountId] || 'Unknown',
+            category: 'Transfer',
+          });
+        } else { // Orphaned transfer
+          result.push({ ...tx, accountName: accountMap[tx.accountId] });
+        }
+      } else { // Regular transaction
+        result.push({ ...tx, accountName: accountMap[tx.accountId] });
+      }
+    }
+    return result.slice(0, 5);
+  }, [transactions, selectedAccountIds, accountMap]);
   
   const { incomeSparkline, expenseSparkline } = useMemo(() => {
     const NUM_POINTS = 30;

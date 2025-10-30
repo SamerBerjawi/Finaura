@@ -97,7 +97,7 @@ const CashflowSankey: React.FC<CashflowSankeyProps> = ({ transactions, expenseCa
         const expenseByParentCategory = transactions
             .filter(tx => tx.type === 'expense' && !tx.transferId)
             // FIX: Explicitly typing the accumulator for `reduce` to resolve 'unknown' type errors.
-            .reduce((acc, tx) => {
+            .reduce((acc: Record<string, { value: number; color: string; }>, tx) => {
                 const parentCat = findParentCategory(tx.category, expenseCategories);
                 const categoryName = parentCat ? parentCat.name : 'Miscellaneous';
                 const color = parentCat ? parentCat.color : '#A0AEC0';
@@ -107,7 +107,7 @@ const CashflowSankey: React.FC<CashflowSankeyProps> = ({ transactions, expenseCa
                 acc[categoryName].value += Math.abs(convertToEur(tx.amount, tx.currency));
                 return acc;
             // FIX: Type the initial value of reduce to ensure type inference for the accumulator.
-            }, {} as Record<string, { value: number; color: string; }>);
+            }, {});
 
         const sortedExpenses = Object.entries(expenseByParentCategory).sort((a, b) => b[1].value - a[1].value);
 
@@ -140,9 +140,9 @@ const CashflowSankey: React.FC<CashflowSankeyProps> = ({ transactions, expenseCa
         // Add values to nodes for display
         nodes.forEach((node) => {
             // FIX: Explicitly type 'l' in reduce callback to fix 'unknown' type error.
-            const totalOut = links.filter(l => l.source === nodeMap.get(node.name)).reduce((sum, l: Omit<SankeyLink, 'color'>) => sum + l.value, 0);
+            const totalOut = links.filter(l => l.source === nodeMap.get(node.name)).reduce((sum, l) => sum + l.value, 0);
             // FIX: Explicitly type 'l' in reduce callback to fix 'unknown' type error.
-            const totalIn = links.filter(l => l.target === nodeMap.get(node.name)).reduce((sum, l: Omit<SankeyLink, 'color'>) => sum + l.value, 0);
+            const totalIn = links.filter(l => l.target === nodeMap.get(node.name)).reduce((sum, l) => sum + l.value, 0);
             node.value = Math.max(totalIn, totalOut);
         });
         

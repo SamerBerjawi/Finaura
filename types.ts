@@ -79,6 +79,14 @@ export interface Transaction {
   sureId?: string;
 }
 
+export interface DisplayTransaction extends Transaction {
+    accountName?: string;
+    isTransfer?: boolean;
+    fromAccountName?: string;
+    toAccountName?: string;
+    originalId?: string; // To keep track of the real ID for editing transfers
+}
+
 export interface InvestmentTransaction {
   id: string;
   accountId: string;

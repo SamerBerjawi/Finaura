@@ -805,7 +805,7 @@ You have been automatically logged in.`);
   
   const renderPage = () => {
     if (currentPage === 'AccountDetail' && viewingAccount) {
-        return <AccountDetail account={viewingAccount} transactions={transactions} allCategories={[...incomeCategories, ...expenseCategories]} setCurrentPage={setCurrentPage} saveTransaction={handleSaveTransaction} />;
+        return <AccountDetail account={viewingAccount} accounts={accounts} transactions={transactions} allCategories={[...incomeCategories, ...expenseCategories]} setCurrentPage={setCurrentPage} saveTransaction={handleSaveTransaction} />;
     }
     switch (currentPage) {
         case 'Dashboard': return <Dashboard user={user!} transactions={transactions} accounts={accounts} saveTransaction={handleSaveTransaction} incomeCategories={incomeCategories} expenseCategories={expenseCategories} />;

@@ -1,7 +1,7 @@
 
 
 import React, { useMemo, useState, useCallback } from 'react';
-import { Account, Transaction, Category, Duration, Page, CategorySpending, Widget, WidgetConfig } from '../types';
+import { Account, Transaction, Category, Duration, Page, CategorySpending, Widget, WidgetConfig, DisplayTransaction } from '../types';
 import { formatCurrency, getDateRange, convertToEur } from '../utils';
 import AddTransactionModal from '../components/AddTransactionModal';
 import { BTN_PRIMARY_STYLE, MOCK_EXPENSE_CATEGORIES, BTN_SECONDARY_STYLE } from '../constants';
@@ -19,6 +19,7 @@ import AddWidgetModal from '../components/AddWidgetModal';
 
 interface AccountDetailProps {
   account: Account;
+  accounts: Account[];
   transactions: Transaction[];
   allCategories: Category[];
   setCurrentPage: (page: Page) => void;
@@ -47,7 +48,7 @@ const findCategoryById = (id: string, categories: Category[]): Category | undefi
     return undefined;
 }
 
-const AccountDetail: React.FC<AccountDetailProps> = ({ account, transactions, allCategories, setCurrentPage, saveTransaction }) => {
+const AccountDetail: React.FC<AccountDetailProps> = ({ account, accounts, transactions, allCategories, setCurrentPage, saveTransaction }) => {
     const [isTransactionModalOpen, setTransactionModalOpen] = useState(false);
     const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
     
@@ -69,11 +70,20 @@ const AccountDetail: React.FC<AccountDetailProps> = ({ account, transactions, al
         setTransactionModalOpen(false);
     };
 
-    const handleTransactionClick = useCallback((transaction: Transaction) => {
-        setModalTransactions([transaction]);
-        setModalTitle('Transaction Details');
+    const handleTransactionClick = useCallback((clickedTx: DisplayTransaction) => {
+        if (clickedTx.isTransfer && clickedTx.transferId) {
+            const pair = transactions.filter(t => t.transferId === clickedTx.transferId);
+            setModalTransactions(pair);
+            setModalTitle('Transfer Details');
+        } else {
+            const originalTx = transactions.find(t => t.id === clickedTx.id);
+            if (originalTx) {
+                setModalTransactions([originalTx]);
+                setModalTitle('Transaction Details');
+            }
+        }
         setDetailModalOpen(true);
-    }, []);
+      }, [transactions]);
   
     const { filteredTransactions, income, expenses } = useMemo(() => {
         const { start, end } = getDateRange(duration, transactions);
@@ -140,12 +150,48 @@ const AccountDetail: React.FC<AccountDetailProps> = ({ account, transactions, al
         setDetailModalOpen(true);
     }, [filteredTransactions]);
 
+    const accountMap = useMemo(() => accounts.reduce((map, acc) => { map[acc.id] = acc.name; return map; }, {} as Record<string, string>), [accounts]);
+
     const recentTransactions = useMemo(() => {
-        return transactions
-                .filter(tx => tx.accountId === account.id)
-                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                .slice(0, 10);
-    }, [transactions, account.id]);
+        const accountTransactions = transactions
+            .filter(tx => tx.accountId === account.id)
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    
+        const processedTransferIds = new Set<string>();
+        const result: DisplayTransaction[] = [];
+    
+        for (const tx of accountTransactions) {
+            if (result.length >= 10) break;
+    
+            if (tx.transferId) {
+                if (processedTransferIds.has(tx.transferId)) continue;
+                
+                const pair = transactions.find(t => t.transferId === tx.transferId && t.id !== tx.id);
+                processedTransferIds.add(tx.transferId);
+    
+                if (pair) {
+                    const expensePart = tx.amount < 0 ? tx : pair;
+                    const incomePart = tx.amount > 0 ? tx : pair;
+                    result.push({
+                        ...expensePart,
+                        id: `transfer-${expensePart.transferId}`,
+                        originalId: expensePart.id,
+                        amount: Math.abs(expensePart.amount),
+                        isTransfer: true,
+                        type: 'expense',
+                        fromAccountName: accountMap[expensePart.accountId] || 'Unknown',
+                        toAccountName: accountMap[incomePart.accountId] || 'Unknown',
+                        category: 'Transfer',
+                    });
+                } else { // Orphaned
+                    result.push({ ...tx, accountName: accountMap[tx.accountId] });
+                }
+            } else {
+                result.push({ ...tx, accountName: accountMap[tx.accountId] });
+            }
+        }
+        return result.slice(0, 10);
+    }, [transactions, account.id, accountMap]);
 
     const { incomeSparkline, expenseSparkline } = useMemo(() => {
         const NUM_POINTS = 30;

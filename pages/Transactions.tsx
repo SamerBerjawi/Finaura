@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { INPUT_BASE_STYLE, SELECT_WRAPPER_STYLE, SELECT_ARROW_STYLE, BTN_PRIMARY_STYLE, BTN_SECONDARY_STYLE } from '../constants';
-import { Transaction, Category, Account } from '../types';
+import { Transaction, Category, Account, DisplayTransaction } from '../types';
 import Card from '../components/Card';
 import { formatCurrency, fuzzySearch, convertToEur } from '../utils';
 import AddTransactionModal from '../components/AddTransactionModal';
@@ -17,15 +17,6 @@ interface TransactionsProps {
   incomeCategories: Category[];
   expenseCategories: Category[];
 }
-
-interface DisplayTransaction extends Transaction {
-    accountName?: string;
-    isTransfer?: boolean;
-    fromAccountName?: string;
-    toAccountName?: string;
-    originalId?: string; // To keep track of the real ID for editing
-}
-
 
 const findCategory = (name: string, categories: Category[]): Category | undefined => {
     for (const cat of categories) {
@@ -251,8 +242,8 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, saveTransacti
   };
 
   const handleOpenEditModal = (transaction: DisplayTransaction) => {
-    const originalId = transaction.isTransfer ? transactions.find(t => t.transferId === transaction.transferId)?.id : transaction.id;
-    const originalTransaction = transactions.find(t => t.id === originalId);
+    const idToFind = transaction.isTransfer ? transaction.originalId : transaction.id;
+    const originalTransaction = transactions.find(t => t.id === idToFind);
     if (originalTransaction) {
         setEditingTransaction(originalTransaction);
         setTransactionModalOpen(true);

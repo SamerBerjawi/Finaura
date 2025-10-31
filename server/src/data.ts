@@ -1,5 +1,5 @@
-// FIX: Consolidate express imports into a single statement to resolve type conflicts and errors related to Request and Response objects.
-import express, { Response } from 'express';
+// FIX: Consolidate express imports and use explicit types from the express namespace to resolve type conflicts.
+import express from 'express';
 import { pool } from './database';
 import { authMiddleware, AuthRequest } from './middleware';
 
@@ -11,8 +11,7 @@ dataRouter.use(authMiddleware);
 
 // Get all financial data for the logged-in user
 // FIX: Use express.Response for route handler to resolve type errors.
-// FIX: Use directly imported Response type.
-dataRouter.get('/', async (req: AuthRequest, res: Response) => {
+dataRouter.get('/', async (req: AuthRequest, res: express.Response) => {
     try {
         const result = await pool.query('SELECT data FROM financial_data WHERE user_email = $1', [req.user.email]);
         if (result.rows.length === 0) {
@@ -27,8 +26,7 @@ dataRouter.get('/', async (req: AuthRequest, res: Response) => {
 
 // Save/Update all financial data for the logged-in user
 // FIX: Use express.Response for route handler to resolve type errors.
-// FIX: Use directly imported Response type.
-dataRouter.post('/', async (req: AuthRequest, res: Response) => {
+dataRouter.post('/', async (req: AuthRequest, res: express.Response) => {
     const data = req.body;
     if (!data) {
         return res.status(400).json({ message: 'No data provided.' });

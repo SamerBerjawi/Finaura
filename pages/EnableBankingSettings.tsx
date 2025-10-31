@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Account, EnableBankingSettings } from '../types';
+import { Account, EnableBankingSettings, Page } from '../types';
 import Card from '../components/Card';
 import { BTN_PRIMARY_STYLE, BTN_SECONDARY_STYLE, SELECT_ARROW_STYLE, SELECT_WRAPPER_STYLE, INPUT_BASE_STYLE, BTN_DANGER_STYLE } from '../constants';
 import ConfirmationModal from '../components/ConfirmationModal';
@@ -11,6 +11,7 @@ interface EnableBankingSettingsProps {
     onStartConnection: () => void;
     onUnlinkAccount: (accountId: string) => void;
     onManualSync: (accountId: string) => void;
+    setCurrentPage: (page: Page) => void;
 }
 
 const EnableBankingSettingsPage: React.FC<EnableBankingSettingsProps> = ({
@@ -20,6 +21,7 @@ const EnableBankingSettingsPage: React.FC<EnableBankingSettingsProps> = ({
     onStartConnection,
     onUnlinkAccount,
     onManualSync,
+    setCurrentPage,
 }) => {
     const [confirmingUnlink, setConfirmingUnlink] = useState<Account | null>(null);
 
@@ -48,17 +50,17 @@ const EnableBankingSettingsPage: React.FC<EnableBankingSettingsProps> = ({
             )}
             <header>
                  <div className="flex items-center gap-4">
-                    <button onClick={() => window.history.back()} className="text-light-text-secondary dark:text-dark-text-secondary p-1 rounded-full hover:bg-black/5 dark:hover:bg-white/5">
+                    <button onClick={() => setCurrentPage('Settings')} className="text-light-text-secondary dark:text-dark-text-secondary p-1 rounded-full hover:bg-black/5 dark:hover:bg-white/5">
                         <span className="material-symbols-outlined">arrow_back</span>
                     </button>
                     <div className="text-sm text-light-text-secondary dark:text-dark-text-secondary">
-                        <span className="hover:underline cursor-pointer">Settings</span>
+                        <span onClick={() => setCurrentPage('Settings')} className="hover:underline cursor-pointer">Settings</span>
                         <span> / </span>
                         <span className="text-light-text dark:text-dark-text font-medium">Enable Banking</span>
                     </div>
                 </div>
                 <div className="mt-4">
-                    <h2 className="text-3xl font-bold text-light-text dark:text-dark-text">Enable Banking Settings</h2>
+                    {/* <h2 className="text-3xl font-bold text-light-text dark:text-dark-text">Enable Banking Settings</h2> */}
                     <p className="text-light-text-secondary dark:text-dark-text-secondary mt-1">Manage your connected bank accounts and sync settings.</p>
                 </div>
             </header>

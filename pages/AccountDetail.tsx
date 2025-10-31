@@ -1,5 +1,6 @@
 
 
+
 import React, { useMemo, useState, useCallback } from 'react';
 import { Account, Transaction, Category, Duration, Page, CategorySpending, Widget, WidgetConfig, DisplayTransaction } from '../types';
 import { formatCurrency, getDateRange, convertToEur } from '../utils';
@@ -360,7 +361,7 @@ const AccountDetail: React.FC<AccountDetailProps> = ({ account, accounts, transa
                         <span className="material-symbols-outlined">arrow_back</span>
                     </button>
                     <div>
-                        <h2 className="text-3xl font-bold text-light-text dark:text-dark-text">{account.name}</h2>
+                        {/* <h2 className="text-3xl font-bold text-light-text dark:text-dark-text">{account.name}</h2> */}
                         <p className="text-light-text-secondary dark:text-dark-text-secondary mt-1">{account.type} Account &bull; Current Balance: {formatCurrency(account.balance, account.currency)}</p>
                     </div>
                 </div>

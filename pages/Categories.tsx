@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { BTN_PRIMARY_STYLE, BTN_SECONDARY_STYLE, INPUT_BASE_STYLE } from '../constants';
-import { Category } from '../types';
+import { Category, Page } from '../types';
 import Card from '../components/Card';
 import CategoryItem from '../components/CategoryItem';
 import CategoryModal from '../components/CategoryModal';
@@ -20,9 +20,10 @@ interface CategoriesProps {
   setIncomeCategories: React.Dispatch<React.SetStateAction<Category[]>>;
   expenseCategories: Category[];
   setExpenseCategories: React.Dispatch<React.SetStateAction<Category[]>>;
+  setCurrentPage: (page: Page) => void;
 }
 
-const Categories: React.FC<CategoriesProps> = ({ incomeCategories, setIncomeCategories, expenseCategories, setExpenseCategories }) => {
+const Categories: React.FC<CategoriesProps> = ({ incomeCategories, setIncomeCategories, expenseCategories, setExpenseCategories, setCurrentPage }) => {
   const [isModalOpen, setModalOpen] = useState(false);
   const [editingState, setEditingState] = useState<EditState | null>(null);
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
@@ -183,27 +184,39 @@ const Categories: React.FC<CategoriesProps> = ({ incomeCategories, setIncomeCate
         </Modal>
       )}
       
-      <header className="flex justify-between items-center">
-        <div>
-          <h2 className="text-3xl font-bold text-light-text dark:text-dark-text">Categories</h2>
-          <p className="text-light-text-secondary dark:text-dark-text-secondary mt-1">Manage your income and expense categories.</p>
-        </div>
+      <header>
         <div className="flex items-center gap-4">
-            <div className="relative">
-                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-light-text-secondary dark:text-dark-text-secondary pointer-events-none">
-                    search
-                </span>
-                <input
-                    type="text"
-                    placeholder="Search categories..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className={`${INPUT_BASE_STYLE} pl-10`}
-                />
-            </div>
-            <button onClick={() => openModal('add', 'expense')} className={BTN_PRIMARY_STYLE}>
-                Add Category
+            <button onClick={() => setCurrentPage('Settings')} className="text-light-text-secondary dark:text-dark-text-secondary p-1 rounded-full hover:bg-black/5 dark:hover:bg-white/5">
+                <span className="material-symbols-outlined">arrow_back</span>
             </button>
+            <div className="text-sm text-light-text-secondary dark:text-dark-text-secondary">
+                <span onClick={() => setCurrentPage('Settings')} className="hover:underline cursor-pointer">Settings</span>
+                <span> / </span>
+                <span className="text-light-text dark:text-dark-text font-medium">Categories</span>
+            </div>
+        </div>
+        <div className="mt-4 flex justify-between items-center">
+            <div>
+              {/* <h2 className="text-3xl font-bold text-light-text dark:text-dark-text">Categories</h2> */}
+              <p className="text-light-text-secondary dark:text-dark-text-secondary mt-1">Manage your income and expense categories.</p>
+            </div>
+            <div className="flex items-center gap-4">
+                <div className="relative">
+                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-light-text-secondary dark:text-dark-text-secondary pointer-events-none">
+                        search
+                    </span>
+                    <input
+                        type="text"
+                        placeholder="Search categories..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className={`${INPUT_BASE_STYLE} pl-10`}
+                    />
+                </div>
+                <button onClick={() => openModal('add', 'expense')} className={BTN_PRIMARY_STYLE}>
+                    Add Category
+                </button>
+            </div>
         </div>
       </header>
 

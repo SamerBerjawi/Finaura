@@ -1,7 +1,8 @@
 
 
+
 import React, { useState, useRef } from 'react';
-import { Account, Transaction, Budget, RecurringTransaction, ImportExportHistoryItem, HistoryStatus, ImportDataType, Category } from '../types';
+import { Account, Transaction, Budget, RecurringTransaction, ImportExportHistoryItem, HistoryStatus, ImportDataType, Category, Page } from '../types';
 import Card from '../components/Card';
 // FIX: Import INPUT_BASE_STYLE to resolve undefined variable error.
 import { BTN_PRIMARY_STYLE, INPUT_BASE_STYLE } from '../constants';
@@ -33,6 +34,7 @@ interface DataManagementProps {
   setSureApiKey: (key: string) => void;
   onSureSync: () => void;
   isSureSyncing: boolean;
+  setCurrentPage: (page: Page) => void;
 }
 
 const HistoryItem: React.FC<{ item: ImportExportHistoryItem; onDelete: (id: string) => void; onView: (item: ImportExportHistoryItem) => void; }> = ({ item, onDelete, onView }) => {
@@ -225,17 +227,17 @@ const DataManagement: React.FC<DataManagementProps> = (props) => {
 
       <header>
         <div className="flex items-center gap-4">
-            <button onClick={() => window.history.back()} className="text-light-text-secondary dark:text-dark-text-secondary">
+            <button onClick={() => props.setCurrentPage('Settings')} className="text-light-text-secondary dark:text-dark-text-secondary">
                 <span className="material-symbols-outlined">arrow_back</span>
             </button>
             <div className="text-sm text-light-text-secondary dark:text-dark-text-secondary">
-                <span className="hover:underline cursor-pointer">Settings</span>
+                <span onClick={() => props.setCurrentPage('Settings')} className="hover:underline cursor-pointer">Settings</span>
                 <span> / </span>
                 <span className="text-light-text dark:text-dark-text font-medium">Data Management</span>
             </div>
         </div>
          <div className="mt-4">
-            <h2 className="text-3xl font-bold text-light-text dark:text-dark-text">Data Management</h2>
+            {/* <h2 className="text-3xl font-bold text-light-text dark:text-dark-text">Data Management</h2> */}
             <p className="text-light-text-secondary dark:text-dark-text-secondary mt-1">Manage your application data, including imports, exports, and resetting data.</p>
         </div>
       </header>

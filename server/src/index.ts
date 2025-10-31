@@ -1,5 +1,5 @@
-// FIX: Consolidate express imports into a single statement to resolve type conflicts and errors related to Request and Response objects.
-import express, { Request, Response } from 'express';
+// FIX: Consolidate express imports and use explicit types from the express namespace to resolve type conflicts.
+import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { initializeDatabase } from './database';
@@ -16,13 +16,13 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
 // API routes
+// FIX: Using correctly typed routers from other files resolves the 'No overload matches this call' error.
 app.use('/api/auth', authRouter);
 app.use('/api/data', dataRouter);
 app.use('/api/users', usersRouter);
 
 // FIX: Explicitly type req and res with express.Request and express.Response to resolve overload and property-not-found errors.
-// FIX: Use directly imported Request and Response types.
-app.get('/', (req: Request, res: Response) => {
+app.get('/', (req: express.Request, res: express.Response) => {
   res.send('Finaura Backend is running!');
 });
 

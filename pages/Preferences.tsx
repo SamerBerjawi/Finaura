@@ -1,5 +1,5 @@
 import React from 'react';
-import { AppPreferences, Theme } from '../types';
+import { AppPreferences, Theme, Page } from '../types';
 import Card from '../components/Card';
 import { SELECT_WRAPPER_STYLE, INPUT_BASE_STYLE, SELECT_ARROW_STYLE } from '../constants';
 
@@ -8,6 +8,7 @@ interface PreferencesProps {
   setPreferences: (prefs: AppPreferences) => void;
   theme: Theme;
   setTheme: (theme: Theme) => void;
+  setCurrentPage: (page: Page) => void;
 }
 
 const PreferenceRow: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
@@ -81,7 +82,7 @@ const ThemeCard: React.FC<{
 };
 
 
-const Preferences: React.FC<PreferencesProps> = ({ preferences, setPreferences, theme, setTheme }) => {
+const Preferences: React.FC<PreferencesProps> = ({ preferences, setPreferences, theme, setTheme, setCurrentPage }) => {
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const { name, value } = e.target;
     setPreferences({ ...preferences, [name]: value });
@@ -91,17 +92,17 @@ const Preferences: React.FC<PreferencesProps> = ({ preferences, setPreferences, 
     <div className="space-y-8 max-w-4xl mx-auto">
       <header>
         <div className="flex items-center gap-4">
-            <button onClick={() => window.history.back()} className="text-light-text-secondary dark:text-dark-text-secondary p-1 rounded-full hover:bg-black/5 dark:hover:bg-white/5">
+            <button onClick={() => setCurrentPage('Settings')} className="text-light-text-secondary dark:text-dark-text-secondary p-1 rounded-full hover:bg-black/5 dark:hover:bg-white/5">
                 <span className="material-symbols-outlined">arrow_back</span>
             </button>
             <div className="text-sm text-light-text-secondary dark:text-dark-text-secondary">
-                <span className="hover:underline cursor-pointer">Settings</span>
+                <span onClick={() => setCurrentPage('Settings')} className="hover:underline cursor-pointer">Settings</span>
                 <span> / </span>
                 <span className="text-light-text dark:text-dark-text font-medium">Preferences</span>
             </div>
         </div>
         <div className="mt-4">
-            <h2 className="text-3xl font-bold text-light-text dark:text-dark-text">Preferences</h2>
+            {/* <h2 className="text-3xl font-bold text-light-text dark:text-dark-text">Preferences</h2> */}
             <p className="text-light-text-secondary dark:text-dark-text-secondary mt-1">Configure your personal preferences for the app.</p>
         </div>
       </header>

@@ -1,5 +1,5 @@
-// FIX: Consolidate express imports into a single statement to resolve type conflicts and errors related to Request and Response objects.
-import express, { Request, Response } from 'express';
+// FIX: Consolidate express imports and use explicit types from the express namespace to resolve type conflicts.
+import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { pool } from './database';
@@ -12,8 +12,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 // Sign Up
 // FIX: Use express.Request and express.Response for route handlers to resolve type errors.
-// FIX: Use directly imported Request and Response types.
-authRouter.post('/signup', async (req: Request, res: Response) => {
+authRouter.post('/signup', async (req: express.Request, res: express.Response) => {
     const { firstName, lastName, email, password } = req.body;
     if (!firstName || !lastName || !email || !password) {
         return res.status(400).json({ message: 'All fields are required.' });
@@ -72,8 +71,7 @@ authRouter.post('/signup', async (req: Request, res: Response) => {
 
 // Sign In
 // FIX: Use express.Request and express.Response for route handlers to resolve type errors.
-// FIX: Use directly imported Request and Response types.
-authRouter.post('/signin', async (req: Request, res: Response) => {
+authRouter.post('/signin', async (req: express.Request, res: express.Response) => {
     const { email, password } = req.body;
     if (!email || !password) {
         return res.status(400).json({ message: 'Email and password are required.' });
@@ -114,9 +112,7 @@ authRouter.post('/signin', async (req: Request, res: Response) => {
 
 // Get current user from token
 // FIX: Correctly typed req as AuthRequest and res as express.Response to resolve overload mismatch with authMiddleware.
-// FIX: Use express.Response for route handlers to resolve type errors.
-// FIX: Use directly imported Response type.
-authRouter.get('/me', authMiddleware, async (req: AuthRequest, res: Response) => {
+authRouter.get('/me', authMiddleware, async (req: AuthRequest, res: express.Response) => {
     try {
         const userResult = await pool.query('SELECT email, first_name, last_name, role, status, profile_picture_url, is_2fa_enabled, last_login FROM users WHERE email = $1', [req.user.email]);
         if (userResult.rows.length === 0) {

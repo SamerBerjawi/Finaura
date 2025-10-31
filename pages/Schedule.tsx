@@ -298,7 +298,7 @@ const Schedule: React.FC<ScheduleProps> = (props) => {
             
             <header className="flex flex-wrap justify-between items-center gap-4">
                 <div>
-                    <h2 className="text-3xl font-bold text-light-text dark:text-dark-text">Schedule & Bills</h2>
+                    {/* <h2 className="text-3xl font-bold text-light-text dark:text-dark-text">Schedule & Bills</h2> */}
                     <p className="text-light-text-secondary dark:text-dark-text-secondary mt-1">Manage your recurring payments, bills, and expected income.</p>
                 </div>
                 <div className="flex items-center gap-4">

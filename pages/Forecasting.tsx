@@ -234,7 +234,7 @@ const Forecasting: React.FC<ForecastingProps> = ({ accounts, transactions, recur
         <div className="space-y-8">
             {isModalOpen && <GoalScenarioModal onClose={() => setIsModalOpen(false)} onSave={saveFinancialGoal} goalToEdit={editingGoal} />}
             <header>
-                <h2 className="text-3xl font-bold text-light-text dark:text-dark-text">Financial Forecasting</h2>
+                {/* <h2 className="text-3xl font-bold text-light-text dark:text-dark-text">Financial Forecasting</h2> */}
                 <p className="text-light-text-secondary dark:text-dark-text-secondary mt-1">Project your financial future based on your data.</p>
             </header>
             

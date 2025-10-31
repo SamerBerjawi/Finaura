@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { User } from '../types';
+import { User, Page } from '../types';
 import Card from '../components/Card';
 import { BTN_PRIMARY_STYLE, INPUT_BASE_STYLE, BTN_SECONDARY_STYLE } from '../constants';
 import ChangePasswordModal from '../components/ChangePasswordModal';
@@ -8,9 +8,10 @@ interface PersonalInfoProps {
   user: User;
   setUser: (user: Partial<User>) => void;
   onChangePassword: (email: string, current: string, newPass: string) => boolean;
+  setCurrentPage: (page: Page) => void;
 }
 
-const PersonalInfo: React.FC<PersonalInfoProps> = ({ user, setUser, onChangePassword }) => {
+const PersonalInfo: React.FC<PersonalInfoProps> = ({ user, setUser, onChangePassword, setCurrentPage }) => {
   const [formData, setFormData] = useState<User>(user);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isPasswordModalOpen, setPasswordModalOpen] = useState(false);
@@ -60,8 +61,20 @@ const PersonalInfo: React.FC<PersonalInfoProps> = ({ user, setUser, onChangePass
         />
       )}
       <header>
-        <h2 className="text-3xl font-bold text-light-text dark:text-dark-text">Personal Info</h2>
-        <p className="text-light-text-secondary dark:text-dark-text-secondary mt-1">Update your profile information and preferences.</p>
+        <div className="flex items-center gap-4">
+            <button onClick={() => setCurrentPage('Settings')} className="text-light-text-secondary dark:text-dark-text-secondary p-1 rounded-full hover:bg-black/5 dark:hover:bg-white/5">
+                <span className="material-symbols-outlined">arrow_back</span>
+            </button>
+            <div className="text-sm text-light-text-secondary dark:text-dark-text-secondary">
+                <span onClick={() => setCurrentPage('Settings')} className="hover:underline cursor-pointer">Settings</span>
+                <span> / </span>
+                <span className="text-light-text dark:text-dark-text font-medium">Personal Info</span>
+            </div>
+        </div>
+        <div className="mt-4">
+          {/* <h2 className="text-3xl font-bold text-light-text dark:text-dark-text">Personal Info</h2> */}
+          <p className="text-light-text-secondary dark:text-dark-text-secondary mt-1">Update your profile information and preferences.</p>
+        </div>
       </header>
 
       <form onSubmit={handleSubmit}>

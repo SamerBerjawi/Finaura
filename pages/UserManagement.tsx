@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { User } from '../types';
+import { User, Page } from '../types';
 import Card from '../components/Card';
 import { BTN_PRIMARY_STYLE, BTN_SECONDARY_STYLE, INPUT_BASE_STYLE } from '../constants';
 import { getApiBaseUrl } from '../utils';
@@ -11,9 +11,10 @@ const API_BASE_URL = getApiBaseUrl();
 
 interface UserManagementProps {
   currentUser: User;
+  setCurrentPage: (page: Page) => void;
 }
 
-const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) => {
+const UserManagement: React.FC<UserManagementProps> = ({ currentUser, setCurrentPage }) => {
     const [allUsers, setAllUsers] = useState<User[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isInviteModalOpen, setInviteModalOpen] = useState(false);
@@ -198,18 +199,18 @@ const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) => {
             
             <header>
                  <div className="flex items-center gap-4">
-                    <button onClick={() => window.history.back()} className="text-light-text-secondary dark:text-dark-text-secondary p-1 rounded-full hover:bg-black/5 dark:hover:bg-white/5">
+                    <button onClick={() => setCurrentPage('Settings')} className="text-light-text-secondary dark:text-dark-text-secondary p-1 rounded-full hover:bg-black/5 dark:hover:bg-white/5">
                         <span className="material-symbols-outlined">arrow_back</span>
                     </button>
                     <div className="text-sm text-light-text-secondary dark:text-dark-text-secondary">
-                        <span className="hover:underline cursor-pointer">Settings</span>
+                        <span onClick={() => setCurrentPage('Settings')} className="hover:underline cursor-pointer">Settings</span>
                         <span> / </span>
                         <span className="text-light-text dark:text-dark-text font-medium">User Management</span>
                     </div>
                 </div>
                 <div className="mt-4 flex justify-between items-center">
                     <div>
-                        <h2 className="text-3xl font-bold text-light-text dark:text-dark-text">User Management</h2>
+                        {/* <h2 className="text-3xl font-bold text-light-text dark:text-dark-text">User Management</h2> */}
                         <p className="text-light-text-secondary dark:text-dark-text-secondary mt-1">Manage users and their permissions.</p>
                     </div>
                     <div className="flex items-center gap-4">

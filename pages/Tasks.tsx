@@ -202,7 +202,7 @@ const Tasks: React.FC<TasksProps> = ({ tasks, saveTask, deleteTask }) => {
 
             <header className="flex flex-wrap justify-between items-center gap-4">
                 <div>
-                    <h2 className="text-3xl font-bold">Tasks</h2>
+                    {/* <h2 className="text-3xl font-bold">Tasks</h2> */}
                     <p className="text-light-text-secondary dark:text-dark-text-secondary mt-1">Manage your financial to-dos.</p>
                 </div>
                 <div className="flex items-center gap-4">

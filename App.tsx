@@ -706,16 +706,16 @@ export const App: React.FC = () => {
         case 'Forecasting': return <Forecasting accounts={accounts} transactions={transactions} recurringTransactions={recurringTransactions} financialGoals={financialGoals} saveFinancialGoal={handleSaveFinancialGoal} deleteFinancialGoal={handleDeleteFinancialGoal} expenseCategories={expenseCategories}/>;
         case 'Settings': return <Settings setCurrentPage={setCurrentPage} user={user!} />;
         case 'Schedule & Bills': return <Schedule recurringTransactions={recurringTransactions} saveRecurringTransaction={handleSaveRecurringTransaction} deleteRecurringTransaction={handleDeleteRecurringTransaction} billsAndPayments={billsAndPayments} saveBillPayment={handleSaveBillPayment} deleteBillPayment={handleDeleteBillPayment} markBillAsPaid={handleMarkBillAsPaid} accounts={accounts} incomeCategories={incomeCategories} expenseCategories={expenseCategories} />;
-        case 'Categories': return <Categories incomeCategories={incomeCategories} setIncomeCategories={setIncomeCategories} expenseCategories={expenseCategories} setExpenseCategories={setExpenseCategories} />;
-        case 'Tags': return <Tags />;
-        case 'Personal Info': return <PersonalInfo user={user!} setUser={(updatedUser) => handleUpdateUser(updatedUser.email, updatedUser)} onChangePassword={handleChangePassword} />;
-        case 'Data Management': return <DataManagement accounts={accounts} transactions={transactions} budgets={budgets} recurringTransactions={recurringTransactions} allCategories={[...incomeCategories, ...expenseCategories]} history={importExportHistory} onPublishImport={handlePublishImport} onDeleteHistoryItem={handleDeleteHistoryItem} onDeleteImportedTransactions={handleDeleteImportedTransactions} onResetAccount={handleResetAccount} onExportAllData={handleExportAllData} onImportAllData={handleImportAllData} onExportCSV={handleExportCSV} sureApiUrl={sureApiUrl} setSureApiUrl={handleSetSureApiUrl} sureApiKey={sureApiKey} setSureApiKey={handleSetSureApiKey} onSureSync={handleSureSync} isSureSyncing={isSureSyncing} />;
-        case 'Preferences': return <Preferences preferences={preferences} setPreferences={setPreferences} theme={theme} setTheme={setTheme} />;
-        case 'Enable Banking': return <EnableBankingSettingsPage linkedAccounts={accounts.filter(a => a.enableBankingId)} settings={enableBankingSettings} setSettings={setEnableBankingSettings} onStartConnection={() => setConnectModalOpen(true)} onUnlinkAccount={()=>{}} onManualSync={()=>{}} />;
+        case 'Categories': return <Categories incomeCategories={incomeCategories} setIncomeCategories={setIncomeCategories} expenseCategories={expenseCategories} setExpenseCategories={setExpenseCategories} setCurrentPage={setCurrentPage} />;
+        case 'Tags': return <Tags setCurrentPage={setCurrentPage} />;
+        case 'Personal Info': return <PersonalInfo user={user!} setUser={(updatedUser) => handleUpdateUser(updatedUser.email, updatedUser)} onChangePassword={handleChangePassword} setCurrentPage={setCurrentPage} />;
+        case 'Data Management': return <DataManagement accounts={accounts} transactions={transactions} budgets={budgets} recurringTransactions={recurringTransactions} allCategories={[...incomeCategories, ...expenseCategories]} history={importExportHistory} onPublishImport={handlePublishImport} onDeleteHistoryItem={handleDeleteHistoryItem} onDeleteImportedTransactions={handleDeleteImportedTransactions} onResetAccount={handleResetAccount} onExportAllData={handleExportAllData} onImportAllData={handleImportAllData} onExportCSV={handleExportCSV} sureApiUrl={sureApiUrl} setSureApiUrl={handleSetSureApiUrl} sureApiKey={sureApiKey} setSureApiKey={handleSetSureApiKey} onSureSync={handleSureSync} isSureSyncing={isSureSyncing} setCurrentPage={setCurrentPage} />;
+        case 'Preferences': return <Preferences preferences={preferences} setPreferences={setPreferences} theme={theme} setTheme={setTheme} setCurrentPage={setCurrentPage} />;
+        case 'Enable Banking': return <EnableBankingSettingsPage linkedAccounts={accounts.filter(a => a.enableBankingId)} settings={enableBankingSettings} setSettings={setEnableBankingSettings} onStartConnection={() => setConnectModalOpen(true)} onUnlinkAccount={()=>{}} onManualSync={()=>{}} setCurrentPage={setCurrentPage} />;
         case 'Investments': return <Investments investmentAccounts={accounts.filter(a => a.type === 'Investment' || a.type === 'Crypto')} cashAccounts={accounts.filter(a => a.type === 'Checking' || a.type === 'Savings')} investmentTransactions={investmentTransactions} saveInvestmentTransaction={handleSaveInvestmentTransaction} deleteInvestmentTransaction={handleDeleteInvestmentTransaction} />;
         case 'Tasks': return <Tasks tasks={tasks} saveTask={handleSaveTask} deleteTask={handleDeleteTask} />;
         case 'Warrants': return <Warrants warrants={warrants} saveWarrant={handleSaveWarrant} deleteWarrant={handleDeleteWarrant} scraperConfigs={scraperConfigs} saveScraperConfig={handleSaveScraperConfig} />;
-        case 'User Management': return <UserManagement currentUser={user!} />;
+        case 'User Management': return <UserManagement currentUser={user!} setCurrentPage={setCurrentPage} />;
         default: return <Dashboard user={user!} transactions={transactions} accounts={accounts} saveTransaction={handleSaveTransaction} incomeCategories={incomeCategories} expenseCategories={expenseCategories} />;
     }
   }
@@ -738,35 +738,20 @@ export const App: React.FC = () => {
         isConnecting={isConnectingToBank}
         onConnect={() => {
             setIsConnectingToBank(true);
+            // Simulate a network request to a banking provider
             setTimeout(() => {
-                // Mock API call to get accounts
-                const ai = new GoogleGenAI({apiKey: process.env.API_KEY});
-                ai.models.generateContent({
-                    model: 'gemini-flash-lite-latest',
-                    contents: "Generate a list of 3-5 sample bank accounts in JSON format, using the 'get_bank_accounts' function.",
-                    config: { tools: [{ functionDeclarations: [getBankAccountsFunctionDeclaration] }] }
-                }).then(response => {
-                    const functionCall = response.functionCalls?.[0];
-                    if (functionCall && functionCall.name === 'get_bank_accounts' && functionCall.args?.accounts) {
-                        setRemoteAccounts(functionCall.args.accounts as RemoteAccount[]);
-                    } else {
-                         // Fallback mock data if Gemini fails
-                        setRemoteAccounts([
-                            {id: 'eb-acc-1', name: 'BNP Checking', balance: 5420.12, currency: 'EUR', institution: 'BNP Paribas', type: 'Checking', last4: '9876'},
-                            {id: 'eb-acc-2', name: 'BNP Savings', balance: 12800.50, currency: 'EUR', institution: 'BNP Paribas', type: 'Savings', last4: '5432'}
-                        ]);
-                    }
-                }).catch(err => {
-                    console.error("Gemini call failed, using fallback accounts.", err);
-                    setRemoteAccounts([
-                        {id: 'eb-acc-1', name: 'BNP Checking', balance: 5420.12, currency: 'EUR', institution: 'BNP Paribas', type: 'Checking', last4: '9876'},
-                        {id: 'eb-acc-2', name: 'BNP Savings', balance: 12800.50, currency: 'EUR', institution: 'BNP Paribas', type: 'Savings', last4: '5432'}
-                    ]);
-                }).finally(() => {
-                    setIsConnectingToBank(false);
-                    setConnectModalOpen(false);
-                    setLinkModalOpen(true);
-                });
+                // This is where a real app would get data back from the provider's SDK
+                const mockRemoteAccounts: RemoteAccount[] = [
+                    {id: 'eb-acc-1', name: 'BNP Paribas Fortis Checking', balance: 5420.12, currency: 'EUR', institution: 'BNP Paribas Fortis', type: 'Checking', last4: '9876'},
+                    {id: 'eb-acc-2', name: 'BNP Paribas Fortis Savings', balance: 12800.50, currency: 'EUR', institution: 'BNP Paribas Fortis', type: 'Savings', last4: '5432'},
+                    {id: 'eb-acc-3', name: 'Keytrade Trading Account', balance: 25345.89, currency: 'EUR', institution: 'Keytrade Bank', type: 'Investment', last4: '1122'},
+                    {id: 'eb-acc-4', name: 'Visa Card', balance: -450.76, currency: 'EUR', institution: 'Belfius', type: 'Credit Card', last4: '3344'},
+                ];
+                setRemoteAccounts(mockRemoteAccounts);
+                
+                setIsConnectingToBank(false);
+                setConnectModalOpen(false);
+                setLinkModalOpen(true);
             }, 2000);
         }}
       />
@@ -837,6 +822,7 @@ export const App: React.FC = () => {
             setSidebarOpen={setSidebarOpen} 
             theme={theme} 
             setTheme={setTheme} 
+            titleOverride={currentPage === 'AccountDetail' && viewingAccount ? viewingAccount.name : undefined}
         />
         <main className="flex-1 overflow-x-hidden p-4 md:p-8 bg-light-bg dark:bg-dark-bg">
             {renderPage()}

@@ -19,7 +19,8 @@ app.use('/api/auth', authRouter);
 app.use('/api/data', dataRouter);
 app.use('/api/users', usersRouter);
 
-app.get('/', (req, res) => {
+// FIX: Explicitly type req and res with express.Request and express.Response to resolve overload and property-not-found errors.
+app.get('/', (req: express.Request, res: express.Response) => {
   res.send('Finaura Backend is running!');
 });
 
@@ -27,4 +28,7 @@ initializeDatabase().then(() => {
   app.listen(port, () => {
     console.log(`Server is running on http://localhost:${port}`);
   });
+}).catch(error => {
+  console.error("Failed to connect to the database. Server is not starting.", error);
+  process.exit(1);
 });

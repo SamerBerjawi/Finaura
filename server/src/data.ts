@@ -1,13 +1,15 @@
 import { Router } from 'express';
+import express from 'express';
 import { pool } from './database';
-import { authMiddleware } from './middleware';
+import { authMiddleware, AuthRequest } from './middleware';
 
 export const dataRouter = Router();
 
+// FIX: Correctly typed middleware and route handlers to resolve overload errors.
 dataRouter.use(authMiddleware);
 
 // Get all financial data for the logged-in user
-dataRouter.get('/', async (req: any, res) => {
+dataRouter.get('/', async (req: AuthRequest, res: express.Response) => {
     try {
         const result = await pool.query('SELECT data FROM financial_data WHERE user_email = $1', [req.user.email]);
         if (result.rows.length === 0) {
@@ -21,7 +23,7 @@ dataRouter.get('/', async (req: any, res) => {
 });
 
 // Save/Update all financial data for the logged-in user
-dataRouter.post('/', async (req: any, res) => {
+dataRouter.post('/', async (req: AuthRequest, res: express.Response) => {
     const data = req.body;
     if (!data) {
         return res.status(400).json({ message: 'No data provided.' });

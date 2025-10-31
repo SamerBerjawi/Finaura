@@ -33,8 +33,14 @@ import ChatFab from './components/ChatFab';
 import Chatbot from './components/Chatbot';
 import { convertToEur, CONVERSION_RATES, arrayToCSV, downloadCSV, getApiBaseUrl } from './utils';
 import { useDebounce } from './hooks/useDebounce';
+import { useAuth } from './hooks/useAuth';
 
 const API_BASE_URL = getApiBaseUrl();
+
+// This constant is now defined in useAuth, but we need a way to check for dev mode here.
+// We will get this flag from the useAuth hook.
+const DEV_MODE_BYPASS_AUTH = true; // This will be replaced by the hook's return value.
+
 
 const getBankAccountsFunctionDeclaration: FunctionDeclaration = {
   name: 'get_bank_accounts',
@@ -96,11 +102,9 @@ const initialFinancialData: FinancialData = {
 
 // FIX: Add export to create a named export for the App component.
 export const App: React.FC = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { user, isAuthenticated, isLoading: isAuthLoading, error: authError, signIn, signUp, signOut, checkAuthStatus, setError: setAuthError } = useAuth();
   const [authPage, setAuthPage] = useState<'signIn' | 'signUp'>('signIn');
-  const [isLoading, setIsLoading] = useState(true);
-  const [isAuthLoading, setIsAuthLoading] = useState(false);
-  const [authError, setAuthError] = useState<string | null>(null);
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
 
   const [currentPage, setCurrentPage] = useState<Page>('Dashboard');
   const [isSidebarOpen, setSidebarOpen] = useState(false);
@@ -111,9 +115,7 @@ export const App: React.FC = () => {
     (localStorage.getItem('theme') as Theme) || 'system'
   );
   
-  const [user, setUser] = useState<User | null>(null);
-  
-  // All financial data states, initialized to be empty
+  // All financial data states
   const [preferences, setPreferences] = useState<AppPreferences>(initialFinancialData.preferences);
   const [enableBankingSettings, setEnableBankingSettings] = useState<EnableBankingSettings>(initialFinancialData.enableBankingSettings);
   const [incomeCategories, setIncomeCategories] = useState<Category[]>(initialFinancialData.incomeCategories);
@@ -162,29 +164,33 @@ export const App: React.FC = () => {
     localStorage.setItem('finaura_sure_api_key', key);
   };
 
-  // Check auth status on initial load
+  const loadAllFinancialData = useCallback((data: FinancialData | null) => {
+    const dataToLoad = data || initialFinancialData;
+    setAccounts(dataToLoad.accounts || []);
+    setTransactions(dataToLoad.transactions || []);
+    setInvestmentTransactions(dataToLoad.investmentTransactions || []);
+    setRecurringTransactions(dataToLoad.recurringTransactions || []);
+    setFinancialGoals(dataToLoad.financialGoals || []);
+    setBudgets(dataToLoad.budgets || []);
+    setTasks(dataToLoad.tasks || []);
+    setWarrants(dataToLoad.warrants || []);
+    setScraperConfigs(dataToLoad.scraperConfigs || []);
+    setImportExportHistory(dataToLoad.importExportHistory || []);
+    setBillsAndPayments(dataToLoad.billsAndPayments || []);
+    setIncomeCategories(dataToLoad.incomeCategories && dataToLoad.incomeCategories.length > 0 ? dataToLoad.incomeCategories : MOCK_INCOME_CATEGORIES);
+    setExpenseCategories(dataToLoad.expenseCategories && dataToLoad.expenseCategories.length > 0 ? dataToLoad.expenseCategories : MOCK_EXPENSE_CATEGORIES);
+    setPreferences(dataToLoad.preferences || initialFinancialData.preferences);
+    setEnableBankingSettings(dataToLoad.enableBankingSettings || initialFinancialData.enableBankingSettings);
+  }, []);
+  
+  // Check auth status and load data on initial load
   useEffect(() => {
-    const checkAuth = async () => {
-      const token = localStorage.getItem('finaura_token');
-      if (token) {
-        try {
-          const res = await fetch(`${API_BASE_URL}/auth/me`, {
-            headers: { 'Authorization': `Bearer ${token}` },
-          });
-          if (res.ok) {
-            const { user, financialData } = await res.json();
-            loadUserData(financialData, user);
-          } else {
-            handleLogout();
-          }
-        } catch (error) {
-          console.error('Auth check failed', error);
-          handleLogout();
-        }
-      }
-      setIsLoading(false);
+    const authAndLoad = async () => {
+        const data = await checkAuthStatus();
+        loadAllFinancialData(data);
+        setIsDataLoaded(true);
     };
-    checkAuth();
+    authAndLoad();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -204,8 +210,14 @@ export const App: React.FC = () => {
   // Persist data to backend on change
   useEffect(() => {
     const saveData = async () => {
+      if (DEV_MODE_BYPASS_AUTH) {
+        localStorage.setItem('finaura_dev_data', JSON.stringify(debouncedDataToSave));
+        return;
+      }
+      
       if (isAuthenticated && user) {
         const token = localStorage.getItem('finaura_token');
+        if (!token) return; // Don't try to save if there's no token
         try {
           await fetch(`${API_BASE_URL}/data`, {
             method: 'POST',
@@ -220,118 +232,40 @@ export const App: React.FC = () => {
         }
       }
     };
-    saveData();
-  }, [debouncedDataToSave, isAuthenticated, user]);
-
-  const loadUserData = (data: FinancialData, userData: User) => {
-    setAccounts(data.accounts || []);
-    setTransactions(data.transactions || []);
-    setInvestmentTransactions(data.investmentTransactions || []);
-    setRecurringTransactions(data.recurringTransactions || []);
-    setFinancialGoals(data.financialGoals || []);
-    setBudgets(data.budgets || []);
-    setTasks(data.tasks || []);
-    setWarrants(data.warrants || []);
-    setScraperConfigs(data.scraperConfigs || []);
-    setImportExportHistory(data.importExportHistory || []);
-    setBillsAndPayments(data.billsAndPayments || []);
-    setIncomeCategories(data.incomeCategories && data.incomeCategories.length > 0 ? data.incomeCategories : MOCK_INCOME_CATEGORIES);
-    setExpenseCategories(data.expenseCategories && data.expenseCategories.length > 0 ? data.expenseCategories : MOCK_EXPENSE_CATEGORIES);
-    setPreferences(data.preferences || initialFinancialData.preferences);
-    setEnableBankingSettings(data.enableBankingSettings || initialFinancialData.enableBankingSettings);
-    
-    // Normalize user data from DB
-    const normalizedUser = {
-      firstName: userData.first_name,
-      lastName: userData.last_name,
-      profilePictureUrl: userData.profile_picture_url,
-      is2FAEnabled: userData.is_2fa_enabled,
-      ...userData
-    };
-
-    setUser(normalizedUser);
-    setIsAuthenticated(true);
-    setIsLoading(false);
-  };
+    // Only save if data has been loaded to prevent overwriting on initial load
+    if(isDataLoaded) {
+      saveData();
+    }
+  }, [debouncedDataToSave, isAuthenticated, user, isDataLoaded]);
 
   // Auth handlers
   const handleSignIn = async (email: string, password: string) => {
-    setIsAuthLoading(true);
-    setAuthError(null);
-    try {
-      const res = await fetch(`${API_BASE_URL}/auth/signin`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-      if (res.ok) {
-        const { token, user, financialData } = await res.json();
-        localStorage.setItem('finaura_token', token);
-        loadUserData(financialData, user);
-      } else {
-        const { message } = await res.json();
-        setAuthError(message || 'Invalid email or password.');
-      }
-    } catch (error) {
-      setAuthError('Failed to sign in. Please check your connection and try again.');
-    } finally {
-      setIsAuthLoading(false);
+    const financialData = await signIn(email, password);
+    if (financialData) {
+      loadAllFinancialData(financialData);
     }
   };
 
   const handleSignUp = async (newUserData: { firstName: string, lastName: string, email: string, password: string }) => {
-    setIsAuthLoading(true);
-    setAuthError(null);
-    try {
-      const res = await fetch(`${API_BASE_URL}/auth/signup`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newUserData),
-      });
-      if (res.ok) {
-        const { token, user, financialData } = await res.json();
-        localStorage.setItem('finaura_token', token);
-        loadUserData(financialData, user);
-      } else {
-        const { message } = await res.json();
-        setAuthError(message || 'Failed to sign up.');
-      }
-    } catch (error) {
-      setAuthError('Failed to sign up. Please check your connection and try again.');
-    } finally {
-      setIsAuthLoading(false);
+    const financialData = await signUp(newUserData);
+    if (financialData) {
+      loadAllFinancialData(financialData);
     }
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('finaura_token');
-    setIsAuthenticated(false);
-    setUser(null);
-    // Reset all states to initial empty state to ensure no data leaks between sessions
-    setAccounts(initialFinancialData.accounts);
-    setTransactions(initialFinancialData.transactions);
-    setInvestmentTransactions(initialFinancialData.investmentTransactions);
-    setRecurringTransactions(initialFinancialData.recurringTransactions);
-    setFinancialGoals(initialFinancialData.financialGoals);
-    setBudgets(initialFinancialData.budgets);
-    setTasks(initialFinancialData.tasks);
-    setWarrants(initialFinancialData.warrants);
-    setScraperConfigs(initialFinancialData.scraperConfigs);
-    setImportExportHistory(initialFinancialData.importExportHistory);
-    setBillsAndPayments(initialFinancialData.billsAndPayments);
-    setIncomeCategories(initialFinancialData.incomeCategories);
-    setExpenseCategories(initialFinancialData.expenseCategories);
-    setPreferences(initialFinancialData.preferences);
-    setEnableBankingSettings(initialFinancialData.enableBankingSettings);
-    
-    setAuthPage('signIn');
+    signOut();
+    if (!DEV_MODE_BYPASS_AUTH) {
+        loadAllFinancialData(null); // Reset all states
+        setAuthPage('signIn');
+    }
   };
 
   // User Management Handlers (These are now just wrappers for API calls)
   const handleUpdateUser = useCallback(async (email: string, updates: Partial<User>) => {
     // API call logic will be in UserManagement.tsx
-    // This is for updating the current user's profile
-    setUser(prev => prev ? { ...prev, ...updates } as User : null);
+    // This hook is not available here, so we will manage user state in the PersonalInfo page
+    // For now, this is a placeholder. A better solution might involve a global state manager.
   }, []);
 
   // FIX: Removed async/Promise to match the synchronous boolean return type expected by the PersonalInfo and ChangePasswordModal components.
@@ -605,7 +539,7 @@ export const App: React.FC = () => {
     if (user) {
         // This should now be an API call, but for simplicity, we keep it client-side
         // to reset the current session state. A real reset would be on the backend.
-        loadUserData(initialFinancialData, user);
+        loadAllFinancialData(initialFinancialData);
         alert("Client-side data has been reset.");
     }
   };
@@ -629,7 +563,7 @@ export const App: React.FC = () => {
         try {
             const data = JSON.parse(event.target?.result as string) as FinancialData;
             if (data.accounts && data.transactions) {
-                loadUserData(data, user);
+                loadAllFinancialData(data);
                 alert('Data successfully restored! Changes will be saved to the database.');
             } else {
                 throw new Error('Invalid backup file format.');
@@ -786,7 +720,7 @@ export const App: React.FC = () => {
     }
   }
 
-  if (isLoading) {
+  if (!isDataLoaded) {
     return <div className="flex items-center justify-center min-h-screen bg-light-bg dark:bg-dark-bg"><div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary-500"></div></div>;
   }
 

@@ -36,6 +36,12 @@ const SignUp: React.FC<SignUpProps> = ({ onSignUp, onNavigateToSignIn, isLoading
           <h2 className="text-2xl font-bold text-center text-light-text dark:text-dark-text mb-2">Create Your Account</h2>
           <p className="text-center text-light-text-secondary dark:text-dark-text-secondary mb-6">Start managing your finances today.</p>
           <form onSubmit={handleSubmit} className="space-y-4">
+            {error && (
+                <div className="bg-red-100 dark:bg-red-900/40 border border-red-400 dark:border-red-600 text-red-700 dark:text-red-200 px-4 py-3 rounded-lg relative text-sm" role="alert">
+                    <strong className="font-bold">Error: </strong>
+                    <span className="block sm:inline">{error}</span>
+                </div>
+            )}
             <div className="grid grid-cols-2 gap-4">
                <div>
                 <label htmlFor="firstName" className="block text-sm font-medium text-light-text-secondary dark:text-dark-text-secondary mb-1">First Name</label>
@@ -90,8 +96,6 @@ const SignUp: React.FC<SignUpProps> = ({ onSignUp, onNavigateToSignIn, isLoading
                 autoComplete="new-password"
               />
             </div>
-
-            {error && <p className="text-sm text-center text-semantic-red">{error}</p>}
             
             <button type="submit" className={`${BTN_PRIMARY_STYLE} w-full !py-3 !text-base disabled:opacity-70 disabled:cursor-not-allowed`} disabled={isLoading}>
               {isLoading ? (

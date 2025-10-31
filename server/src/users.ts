@@ -1,14 +1,16 @@
 import { Router } from 'express';
+import express from 'express';
 import { pool } from './database';
-import { authMiddleware, adminMiddleware } from './middleware';
+import { authMiddleware, adminMiddleware, AuthRequest } from './middleware';
 import bcrypt from 'bcryptjs';
 
 export const usersRouter = Router();
 
+// FIX: Correctly typed middleware and route handlers to resolve overload errors.
 usersRouter.use(authMiddleware, adminMiddleware);
 
 // Get all users (admin only)
-usersRouter.get('/', async (req, res) => {
+usersRouter.get('/', async (req, res: express.Response) => {
     try {
         const result = await pool.query('SELECT email, first_name, last_name, role, status, last_login, profile_picture_url, is_2fa_enabled FROM users ORDER BY last_name, first_name');
         res.json(result.rows);
@@ -19,7 +21,7 @@ usersRouter.get('/', async (req, res) => {
 });
 
 // Update a user (admin only)
-usersRouter.put('/:email', async (req: any, res) => {
+usersRouter.put('/:email', async (req: AuthRequest, res: express.Response) => {
     const { email } = req.params;
     const { role, status } = req.body;
     
@@ -43,7 +45,7 @@ usersRouter.put('/:email', async (req: any, res) => {
 });
 
 // Delete a user (admin only)
-usersRouter.delete('/:email', async (req: any, res) => {
+usersRouter.delete('/:email', async (req: AuthRequest, res: express.Response) => {
     const { email } = req.params;
     
     if (email === req.user.email) {
@@ -63,7 +65,7 @@ usersRouter.delete('/:email', async (req: any, res) => {
 });
 
 // Reset a user's password (admin only)
-usersRouter.post('/:email/reset-password', async (req: any, res) => {
+usersRouter.post('/:email/reset-password', async (req: AuthRequest, res: express.Response) => {
     const { email } = req.params;
     if (email === req.user.email) {
         return res.status(403).json({ message: "Cannot reset your own password here." });

@@ -16,6 +16,9 @@ import MultiAccountFilter from '../components/MultiAccountFilter';
 import CurrentBalanceCard from '../components/CurrentBalanceCard';
 import useLocalStorage from '../hooks/useLocalStorage';
 import AddWidgetModal from '../components/AddWidgetModal';
+import { useTransactionMatcher } from '../hooks/useTransactionMatcher';
+import TransactionMatcherModal from '../components/TransactionMatcherModal';
+import Card from '../components/Card';
 
 
 interface DashboardProps {
@@ -64,6 +67,9 @@ const Dashboard: React.FC<DashboardProps> = ({ user, transactions, accounts, sav
   
   const [isAddWidgetModalOpen, setIsAddWidgetModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [isMatcherModalOpen, setIsMatcherModalOpen] = useState(false);
+
+  const { suggestions, confirmMatch, dismissSuggestion, confirmAllMatches, dismissAllSuggestions } = useTransactionMatcher(transactions, accounts, saveTransaction);
 
   const allCategories = useMemo(() => [...incomeCategories, ...expenseCategories], [incomeCategories, expenseCategories]);
 
@@ -469,6 +475,18 @@ const Dashboard: React.FC<DashboardProps> = ({ user, transactions, accounts, sav
         accounts={accounts}
       />
       <AddWidgetModal isOpen={isAddWidgetModalOpen} onClose={() => setIsAddWidgetModalOpen(false)} availableWidgets={availableWidgetsToAdd} onAddWidget={addWidget} />
+      {isMatcherModalOpen && (
+          <TransactionMatcherModal
+              isOpen={isMatcherModalOpen}
+              onClose={() => setIsMatcherModalOpen(false)}
+              suggestions={suggestions}
+              accounts={accounts}
+              onConfirmMatch={confirmMatch}
+              onDismissSuggestion={dismissSuggestion}
+              onConfirmAll={confirmAllMatches}
+              onDismissAll={dismissAllSuggestions}
+          />
+      )}
       
       {/* Header */}
       <div className="flex flex-wrap justify-between items-center gap-4">
@@ -502,6 +520,27 @@ const Dashboard: React.FC<DashboardProps> = ({ user, transactions, accounts, sav
         </div>
       </div>
       
+      {/* New Suggestion Summary Card */}
+      {suggestions.length > 0 && (
+          <Card>
+              <div className="flex flex-wrap justify-between items-center gap-4">
+                  <div className="flex items-center gap-3">
+                      <span className="material-symbols-outlined text-2xl text-primary-500">autorenew</span>
+                      <div>
+                          <h3 className="font-semibold text-lg">Potential Transfers Detected</h3>
+                          <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary">
+                              We found {suggestions.length} pair(s) of transactions that might be transfers.
+                          </p>
+                      </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                      <button onClick={dismissAllSuggestions} className={BTN_SECONDARY_STYLE}>Dismiss All</button>
+                      <button onClick={() => setIsMatcherModalOpen(true)} className={BTN_PRIMARY_STYLE}>Review All</button>
+                  </div>
+              </div>
+          </Card>
+      )}
+
       {/* Top Summary Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <BalanceCard title="Income" amount={income} change={incomeChange} changeType="positive" sparklineData={incomeSparkline} />

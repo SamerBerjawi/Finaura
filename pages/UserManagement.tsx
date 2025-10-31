@@ -1,7 +1,7 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { User } from '../types';
 import Card from '../components/Card';
-import { BTN_PRIMARY_STYLE, BTN_SECONDARY_STYLE } from '../constants';
+import { BTN_PRIMARY_STYLE, BTN_SECONDARY_STYLE, INPUT_BASE_STYLE } from '../constants';
 import { getApiBaseUrl } from '../utils';
 import ConfirmationModal from '../components/ConfirmationModal';
 import InviteUserModal from '../components/InviteUserModal';
@@ -21,9 +21,11 @@ const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) => {
     const [editingUser, setEditingUser] = useState<User | null>(null);
     const [confirmingDelete, setConfirmingDelete] = useState<User | null>(null);
     const [activeActionMenu, setActiveActionMenu] = useState<string | null>(null);
+    const [searchTerm, setSearchTerm] = useState('');
     const actionMenuRef = useRef<HTMLDivElement>(null);
 
     const fetchUsers = useCallback(async () => {
+        setIsLoading(true);
         const token = localStorage.getItem('finaura_token');
         try {
             const res = await fetch(`${API_BASE_URL}/users`, {
@@ -55,6 +57,17 @@ const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) => {
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
+
+    const filteredUsers = useMemo(() => {
+        if (!searchTerm) return allUsers;
+        const lowercasedFilter = searchTerm.toLowerCase();
+        return allUsers.filter(user =>
+            user.firstName.toLowerCase().includes(lowercasedFilter) ||
+            user.lastName.toLowerCase().includes(lowercasedFilter) ||
+            user.email.toLowerCase().includes(lowercasedFilter)
+        );
+    }, [allUsers, searchTerm]);
+
 
     const makeApiCall = async (endpoint: string, method: string, body?: any) => {
         const token = localStorage.getItem('finaura_token');
@@ -127,6 +140,26 @@ const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) => {
         setActiveActionMenu(null);
     };
 
+    const SkeletonRow = () => (
+        <tr className="animate-pulse">
+            <td className="p-4">
+                <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700"></div>
+                    <div>
+                        <div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                        <div className="h-3 w-48 bg-gray-200 dark:bg-gray-700 rounded mt-2"></div>
+                    </div>
+                </div>
+            </td>
+            <td className="p-4"><div className="h-4 w-20 bg-gray-200 dark:bg-gray-700 rounded"></div></td>
+            <td className="p-4"><div className="h-6 w-16 bg-gray-200 dark:bg-gray-700 rounded-full"></div></td>
+            <td className="p-4"><div className="h-4 w-40 bg-gray-200 dark:bg-gray-700 rounded"></div></td>
+            <td className="p-4 text-right">
+                <div className="h-8 w-24 bg-gray-200 dark:bg-gray-700 rounded-lg ml-auto"></div>
+            </td>
+        </tr>
+    );
+
     return (
         <div className="space-y-8 max-w-6xl mx-auto">
             {isInviteModalOpen && (
@@ -154,7 +187,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) => {
                     isOpen={!!confirmingDelete}
                     onClose={() => setConfirmingDelete(null)}
                     onConfirm={() => {
-                        onDeleteUser(confirmingDelete.email);
+                        if (confirmingDelete) onDeleteUser(confirmingDelete.email);
                         setConfirmingDelete(null);
                     }}
                     title="Confirm User Deletion"
@@ -179,10 +212,22 @@ const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) => {
                         <h2 className="text-3xl font-bold text-light-text dark:text-dark-text">User Management</h2>
                         <p className="text-light-text-secondary dark:text-dark-text-secondary mt-1">Manage users and their permissions.</p>
                     </div>
-                    <button onClick={() => setInviteModalOpen(true)} className={`${BTN_PRIMARY_STYLE} flex items-center gap-2`}>
-                        <span className="material-symbols-outlined">person_add</span>
-                        Invite User
-                    </button>
+                    <div className="flex items-center gap-4">
+                        <div className="relative">
+                            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-light-text-secondary dark:text-dark-text-secondary pointer-events-none">search</span>
+                            <input
+                                type="text"
+                                placeholder="Search users..."
+                                value={searchTerm}
+                                onChange={e => setSearchTerm(e.target.value)}
+                                className={`${INPUT_BASE_STYLE} pl-10`}
+                            />
+                        </div>
+                        <button onClick={() => setInviteModalOpen(true)} className={`${BTN_PRIMARY_STYLE} flex items-center gap-2`}>
+                            <span className="material-symbols-outlined">person_add</span>
+                            Invite User
+                        </button>
+                    </div>
                 </div>
             </header>
 
@@ -198,49 +243,58 @@ const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-black/5 dark:divide-white/5">
-                        {allUsers.map(user => (
-                            <tr key={user.email} className={activeActionMenu === user.email ? 'relative z-10' : ''}>
-                                <td className="p-4 align-middle">
-                                    <div className="flex items-center gap-4">
-                                        <img src={user.profilePictureUrl} alt="" className="w-10 h-10 rounded-full object-cover"/>
-                                        <div>
-                                            <p className="font-semibold text-light-text dark:text-dark-text">{user.firstName} {user.lastName} {user.email === currentUser.email && <span className="text-xs text-primary-500">(You)</span>}</p>
-                                            <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary truncate">{user.email}</p>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td className="p-4 text-light-text dark:text-dark-text align-middle">{user.role}</td>
-                                <td className="p-4 align-middle">
-                                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${user.status === 'Active' ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'}`}>{user.status}</span>
-                                </td>
-                                <td className="p-4 text-light-text-secondary dark:text-dark-text-secondary align-middle">{new Date(user.lastLogin).toLocaleString()}</td>
-                                <td className="p-4 text-right align-middle">
-                                    {user.email !== currentUser.email && (
-                                        <div className="flex items-center justify-end gap-2">
-                                            <button onClick={() => handleEditClick(user)} className={`${BTN_SECONDARY_STYLE} !py-1 !px-3 !text-sm`}>
-                                                Edit
-                                            </button>
-                                            <div ref={activeActionMenu === user.email ? actionMenuRef : null}>
-                                                <button onClick={() => setActiveActionMenu(activeActionMenu === user.email ? null : user.email)} className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/5">
-                                                    <span className="material-symbols-outlined">more_vert</span>
-                                                </button>
-                                                {activeActionMenu === user.email && (
-                                                    <div className="absolute right-0 mt-2 w-56 bg-light-card dark:bg-dark-card rounded-md shadow-lg border border-black/5 dark:border-white/10 z-20 py-1">
-                                                        <button onClick={() => handleToggleAdmin(user)} className="w-full text-left flex items-center gap-2 px-4 py-2 text-sm hover:bg-black/5 dark:hover:bg-white/5">{user.role === 'Administrator' ? 'Revoke Admin' : 'Make Administrator'}</button>
-                                                        <button onClick={() => handleToggleStatus(user)} className="w-full text-left flex items-center gap-2 px-4 py-2 text-sm hover:bg-black/5 dark:hover:bg-white/5">{user.status === 'Active' ? 'Deactivate User' : 'Activate User'}</button>
-                                                        <button onClick={() => { onAdminPasswordReset(user.email); setActiveActionMenu(null); }} className="w-full text-left flex items-center gap-2 px-4 py-2 text-sm hover:bg-black/5 dark:hover:bg-white/5">Reset Password</button>
-                                                        <div className="my-1 h-px bg-gray-200 dark:bg-gray-700"></div>
-                                                        <button onClick={() => handleDeleteClick(user)} className="w-full text-left flex items-center gap-2 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-500/10">Delete User</button>
-                                                    </div>
-                                                )}
+                        {isLoading ? (
+                            [...Array(5)].map((_, i) => <SkeletonRow key={i} />)
+                        ) : (
+                            filteredUsers.map(user => (
+                                <tr key={user.email} className={activeActionMenu === user.email ? 'relative z-10' : ''}>
+                                    <td className="p-4 align-middle">
+                                        <div className="flex items-center gap-4">
+                                            <img src={user.profilePictureUrl} alt="" className="w-10 h-10 rounded-full object-cover"/>
+                                            <div>
+                                                <p className="font-semibold text-light-text dark:text-dark-text">{user.firstName} {user.lastName} {user.email === currentUser.email && <span className="text-xs text-primary-500">(You)</span>}</p>
+                                                <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary truncate">{user.email}</p>
                                             </div>
                                         </div>
-                                    )}
-                                </td>
-                            </tr>
-                        ))}
+                                    </td>
+                                    <td className="p-4 text-light-text dark:text-dark-text align-middle">{user.role}</td>
+                                    <td className="p-4 align-middle">
+                                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${user.status === 'Active' ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'}`}>{user.status}</span>
+                                    </td>
+                                    <td className="p-4 text-light-text-secondary dark:text-dark-text-secondary align-middle">{user.lastLogin ? new Date(user.lastLogin).toLocaleString() : 'Never'}</td>
+                                    <td className="p-4 text-right align-middle">
+                                        {user.email !== currentUser.email && (
+                                            <div className="flex items-center justify-end gap-2">
+                                                <button onClick={() => handleEditClick(user)} className={`${BTN_SECONDARY_STYLE} !py-1 !px-3 !text-sm`}>
+                                                    Edit
+                                                </button>
+                                                <div ref={activeActionMenu === user.email ? actionMenuRef : null}>
+                                                    <button onClick={() => setActiveActionMenu(activeActionMenu === user.email ? null : user.email)} className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/5">
+                                                        <span className="material-symbols-outlined">more_vert</span>
+                                                    </button>
+                                                    {activeActionMenu === user.email && (
+                                                        <div className="absolute right-0 mt-2 w-56 bg-light-card dark:bg-dark-card rounded-md shadow-lg border border-black/5 dark:border-white/10 z-20 py-1">
+                                                            <button onClick={() => handleToggleAdmin(user)} className="w-full text-left flex items-center gap-2 px-4 py-2 text-sm hover:bg-black/5 dark:hover:bg-white/5">{user.role === 'Administrator' ? 'Revoke Admin' : 'Make Administrator'}</button>
+                                                            <button onClick={() => handleToggleStatus(user)} className="w-full text-left flex items-center gap-2 px-4 py-2 text-sm hover:bg-black/5 dark:hover:bg-white/5">{user.status === 'Active' ? 'Deactivate User' : 'Activate User'}</button>
+                                                            <button onClick={() => { onAdminPasswordReset(user.email); setActiveActionMenu(null); }} className="w-full text-left flex items-center gap-2 px-4 py-2 text-sm hover:bg-black/5 dark:hover:bg-white/5">Reset Password</button>
+                                                            <div className="my-1 h-px bg-gray-200 dark:bg-gray-700"></div>
+                                                            <button onClick={() => handleDeleteClick(user)} className="w-full text-left flex items-center gap-2 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-500/10">Delete User</button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </td>
+                                </tr>
+                            ))
+                        )}
                     </tbody>
                 </table>
+                 {filteredUsers.length === 0 && !isLoading && (
+                    <div className="text-center py-12 text-light-text-secondary dark:text-dark-text-secondary">
+                        <p>No users found matching "{searchTerm}".</p>
+                    </div>
+                )}
             </Card>
         </div>
     );

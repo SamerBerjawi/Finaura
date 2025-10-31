@@ -24,6 +24,30 @@ const EnableBankingSettingsPage: React.FC<EnableBankingSettingsProps> = ({
     setCurrentPage,
 }) => {
     const [confirmingUnlink, setConfirmingUnlink] = useState<Account | null>(null);
+    const [localSettings, setLocalSettings] = useState(settings);
+    const [isSaved, setIsSaved] = useState(false);
+
+    const handleCredentialsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setIsSaved(false);
+        setLocalSettings({ ...localSettings, [e.target.name]: e.target.value });
+    };
+
+    const handleSettingsChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const { name, value } = e.target;
+        const newSettings = { ...settings, [name]: value };
+        setSettings(newSettings);
+    };
+
+    const handleToggleAutoSync = () => {
+        const newSettings = { ...settings, autoSyncEnabled: !settings.autoSyncEnabled };
+        setSettings(newSettings);
+    };
+
+    const handleSaveCredentials = () => {
+        setSettings(localSettings);
+        setIsSaved(true);
+        setTimeout(() => setIsSaved(false), 2000);
+    };
 
     const handleUnlinkClick = (account: Account) => {
         setConfirmingUnlink(account);
@@ -66,6 +90,28 @@ const EnableBankingSettingsPage: React.FC<EnableBankingSettingsProps> = ({
             </header>
 
             <Card>
+                <h3 className="text-xl font-semibold mb-2 text-light-text dark:text-dark-text">API Credentials</h3>
+                <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary mb-4">
+                    These credentials are required to connect to the Enable Banking API. For a real application, these should be handled by a secure backend, but for this demo they are stored locally in your browser.
+                </p>
+                <div className="space-y-4">
+                     <div>
+                        <label htmlFor="clientId" className="block text-sm font-medium text-light-text-secondary dark:text-dark-text-secondary mb-1">Client ID</label>
+                        <input id="clientId" name="clientId" type="text" value={localSettings.clientId || ''} onChange={handleCredentialsChange} className={INPUT_BASE_STYLE} />
+                    </div>
+                     <div>
+                        <label htmlFor="clientSecret" className="block text-sm font-medium text-light-text-secondary dark:text-dark-text-secondary mb-1">Client Secret</label>
+                        <input id="clientSecret" name="clientSecret" type="password" value={localSettings.clientSecret || ''} onChange={handleCredentialsChange} className={INPUT_BASE_STYLE} />
+                    </div>
+                    <div className="flex justify-end">
+                        <button onClick={handleSaveCredentials} className={`${BTN_PRIMARY_STYLE} transition-all ${isSaved ? 'bg-green-500 hover:bg-green-600' : ''}`}>
+                            {isSaved ? 'Saved!' : 'Save Credentials'}
+                        </button>
+                    </div>
+                </div>
+            </Card>
+
+            <Card>
                 <h3 className="text-xl font-semibold mb-4 text-light-text dark:text-dark-text">General Settings</h3>
                 <div className="space-y-4">
                     <div className="flex justify-between items-center">
@@ -74,7 +120,7 @@ const EnableBankingSettingsPage: React.FC<EnableBankingSettingsProps> = ({
                             <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary">Automatically sync transactions from your linked accounts.</p>
                         </div>
                         <div 
-                            onClick={() => setSettings({ ...settings, autoSyncEnabled: !settings.autoSyncEnabled })}
+                            onClick={handleToggleAutoSync}
                             className={`w-12 h-6 rounded-full p-1 flex items-center cursor-pointer transition-colors ${settings.autoSyncEnabled ? 'bg-primary-500' : 'bg-gray-200 dark:bg-gray-700'}`}
                         >
                             <div className={`w-4 h-4 rounded-full bg-white dark:bg-dark-card shadow-md transform transition-transform ${settings.autoSyncEnabled ? 'translate-x-6' : 'translate-x-0'}`}></div>
@@ -84,8 +130,9 @@ const EnableBankingSettingsPage: React.FC<EnableBankingSettingsProps> = ({
                         <p className="font-medium">Sync Frequency</p>
                         <div className={`${SELECT_WRAPPER_STYLE} max-w-xs`}>
                             <select 
+                                name="syncFrequency"
                                 value={settings.syncFrequency} 
-                                onChange={(e) => setSettings({ ...settings, syncFrequency: e.target.value as 'daily' | 'twice_daily' })} 
+                                onChange={handleSettingsChange}
                                 className={INPUT_BASE_STYLE}
                                 disabled={!settings.autoSyncEnabled}
                             >

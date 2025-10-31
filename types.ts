@@ -218,6 +218,8 @@ export interface RemoteAccount {
 export interface EnableBankingSettings {
   autoSyncEnabled: boolean;
   syncFrequency: 'daily' | 'twice_daily';
+  clientId?: string;
+  clientSecret?: string;
 }
 
 // New types for Bills & Payments

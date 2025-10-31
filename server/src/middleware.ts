@@ -1,16 +1,16 @@
 // FIX: Consolidate express imports and use explicit types from the express namespace to resolve type conflicts.
-import express, { Request, Response, NextFunction } from 'express';
+import express from 'express';
 import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 // FIX: Extended express.Request to ensure correct type properties.
-export interface AuthRequest extends Request {
+export interface AuthRequest extends express.Request {
     user?: any;
 }
 
 // FIX: Use express.Response for route handler to resolve type errors.
-export const authMiddleware = (req: AuthRequest, res: Response, next: NextFunction) => {
+export const authMiddleware = (req: AuthRequest, res: express.Response, next: express.NextFunction) => {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return res.status(401).json({ message: 'Access denied. No token provided.' });
@@ -27,7 +27,7 @@ export const authMiddleware = (req: AuthRequest, res: Response, next: NextFuncti
 };
 
 // FIX: Use express.Response for route handler to resolve type errors.
-export const adminMiddleware = (req: AuthRequest, res: Response, next: NextFunction) => {
+export const adminMiddleware = (req: AuthRequest, res: express.Response, next: express.NextFunction) => {
     if (req.user.role !== 'Administrator') {
         return res.status(403).json({ message: 'Access denied. Administrator privileges required.' });
     }

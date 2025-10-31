@@ -1,17 +1,17 @@
 // FIX: Consolidate express imports and use explicit types from the express namespace to resolve type conflicts.
-import express, { Router, Response } from 'express';
+import express from 'express';
 import { pool } from './database';
 import { authMiddleware, AuthRequest } from './middleware';
 
 // FIX: Create router from express instance.
-export const dataRouter: Router = express.Router();
+export const dataRouter: express.Router = express.Router();
 
 // FIX: Correctly typed middleware and route handlers to resolve overload errors.
 dataRouter.use(authMiddleware);
 
 // Get all financial data for the logged-in user
 // FIX: Use express.Response for route handler to resolve type errors.
-dataRouter.get('/', async (req: AuthRequest, res: Response) => {
+dataRouter.get('/', async (req: AuthRequest, res: express.Response) => {
     try {
         const result = await pool.query('SELECT data FROM financial_data WHERE user_email = $1', [req.user.email]);
         if (result.rows.length === 0) {
@@ -26,7 +26,7 @@ dataRouter.get('/', async (req: AuthRequest, res: Response) => {
 
 // Save/Update all financial data for the logged-in user
 // FIX: Use express.Response for route handler to resolve type errors.
-dataRouter.post('/', async (req: AuthRequest, res: Response) => {
+dataRouter.post('/', async (req: AuthRequest, res: express.Response) => {
     const data = req.body;
     if (!data) {
         return res.status(400).json({ message: 'No data provided.' });

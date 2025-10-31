@@ -24,7 +24,9 @@ import Warrants from './pages/Warrants';
 import UserManagement from './pages/UserManagement';
 // FIX: Import FinancialData from types.ts
 import { Page, Theme, Category, User, Transaction, Account, RecurringTransaction, WeekendAdjustment, FinancialGoal, Budget, ImportExportHistoryItem, AppPreferences, RemoteAccount, AccountType, EnableBankingSettings, InvestmentTransaction, Task, Warrant, ScraperConfig, ImportDataType, FinancialData, Currency, BillPayment, BillPaymentStatus } from './types';
-import { MOCK_INCOME_CATEGORIES, MOCK_EXPENSE_CATEGORIES } from './constants';
+// FIX: Import Card component and BTN_PRIMARY_STYLE constant to resolve 'Cannot find name' errors.
+import { MOCK_INCOME_CATEGORIES, MOCK_EXPENSE_CATEGORIES, BTN_PRIMARY_STYLE, BTN_SECONDARY_STYLE } from './constants';
+import Card from './components/Card';
 import { v4 as uuidv4 } from 'uuid';
 import EnableBankingConnectModal from './components/EnableBankingConnectModal';
 import EnableBankingLinkAccountsModal from './components/EnableBankingLinkAccountsModal';
@@ -96,6 +98,8 @@ const initialFinancialData: FinancialData = {
     enableBankingSettings: {
         autoSyncEnabled: true,
         syncFrequency: 'daily',
+        clientId: '',
+        clientSecret: '',
     },
 };
 
@@ -112,6 +116,40 @@ const mapEnableBankingAccountType = (cashAccountType?: string): AccountType => {
     default:
       return 'Other Assets';
   }
+};
+
+
+const EnableBankingConsent: React.FC<{ onAuthorize: () => void; onDeny: () => void; }> = ({ onAuthorize, onDeny }) => {
+  return (
+    <div className="fixed inset-0 bg-light-bg dark:bg-dark-bg z-[999] flex items-center justify-center p-4">
+      <Card className="max-w-md w-full">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold">Enable Banking</h2>
+          <p className="text-light-text-secondary dark:text-dark-text-secondary mt-2">
+            Finaura is requesting access to your account information.
+          </p>
+        </div>
+        <div className="mt-6 p-4 bg-light-fill dark:bg-dark-fill rounded-lg">
+          <h3 className="font-semibold">Finaura wants to:</h3>
+          <ul className="mt-2 space-y-2 text-sm text-light-text-secondary dark:text-dark-text-secondary">
+            <li className="flex items-start gap-2">
+              <span className="material-symbols-outlined text-green-500">check_circle</span>
+              <span>View your account balances and details</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="material-symbols-outlined text-green-500">check_circle</span>
+              <span>View your transaction history</span>
+            </li>
+          </ul>
+          <p className="text-xs mt-4">This is a read-only connection. Finaura will not be able to move money or make changes to your accounts.</p>
+        </div>
+        <div className="flex justify-end gap-4 mt-6">
+          <button onClick={onDeny} className={BTN_SECONDARY_STYLE}>Deny</button>
+          <button onClick={onAuthorize} className={BTN_PRIMARY_STYLE}>Authorize</button>
+        </div>
+      </Card>
+    </div>
+  );
 };
 
 
@@ -150,8 +188,11 @@ export const App: React.FC = () => {
   // State for Bank Sync Flow
   const [isConnectModalOpen, setConnectModalOpen] = useState(false);
   const [isLinkModalOpen, setLinkModalOpen] = useState(false);
-  const [isConnectingToBank, setIsConnectingToBank] = useState(false);
   const [remoteAccounts, setRemoteAccounts] = useState<RemoteAccount[]>([]);
+  const [isProcessingOAuth, setIsProcessingOAuth] = useState(false);
+  const [oauthError, setOauthError] = useState<string | null>(null);
+  const [isConsentScreenOpen, setConsentScreenOpen] = useState(false);
+
 
   // State for AI Chat
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -208,6 +249,109 @@ export const App: React.FC = () => {
     authAndLoad();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+    const processOAuthCallback = useCallback(async (codeOverride?: string, stateOverride?: string) => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = codeOverride ?? urlParams.get('code');
+        const returnedState = stateOverride ?? urlParams.get('state');
+        const savedState = localStorage.getItem('eb_oauth_state');
+        const isFromUrl = !codeOverride && urlParams.has('code');
+
+        if (code && returnedState && savedState) {
+            // Clean up URL and state from storage immediately
+            localStorage.removeItem('eb_oauth_state');
+            if (isFromUrl) {
+                try {
+                    window.history.pushState({}, document.title, window.location.pathname);
+                } catch (e) {
+                    console.warn("Could not clean up URL history state:", e);
+                }
+            }
+
+            if (returnedState !== savedState) {
+                setOauthError("Invalid state parameter. Possible CSRF attack. Please try connecting again.");
+                return;
+            }
+
+            // Now, exchange the code for a token
+            setIsProcessingOAuth(true);
+            setOauthError(null);
+
+            const { clientId, clientSecret } = enableBankingSettings;
+            if (!clientId || !clientSecret) {
+                setOauthError("Client ID or Client Secret are not configured. Please go to Settings > Enable Banking.");
+                setIsProcessingOAuth(false);
+                return;
+            }
+
+            try {
+                const tokenUrl = 'https://api.enablebanking.com/oauth/v2/token';
+                const proxiedTokenUrl = `https://corsproxy.io/?${encodeURIComponent(tokenUrl)}`;
+                
+                const tokenResponse = await fetch(proxiedTokenUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({
+                        grant_type: 'authorization_code',
+                        code: code,
+                        client_id: clientId,
+                        client_secret: clientSecret,
+                        redirect_uri: window.location.origin
+                    })
+                });
+                
+                if (!tokenResponse.ok) {
+                    const errorData = await tokenResponse.json();
+                    throw new Error(errorData.error_description || 'Failed to exchange authorization code for token.');
+                }
+                
+                const { access_token } = await tokenResponse.json();
+
+                // Now fetch accounts with the access token
+                const accountsUrl = 'https://api.enablebanking.com/v1/accounts';
+                const proxiedAccountsUrl = `https://corsproxy.io/?${encodeURIComponent(accountsUrl)}`;
+                
+                const accountsResponse = await fetch(proxiedAccountsUrl, {
+                    headers: { 'Authorization': `Bearer ${access_token}` }
+                });
+
+                if (!accountsResponse.ok) {
+                     const errorData = await accountsResponse.json();
+                    throw new Error(errorData.message || 'Failed to fetch accounts.');
+                }
+                
+                const enableBankingData = await accountsResponse.json();
+
+                const mappedAccounts: RemoteAccount[] = enableBankingData.accounts.map((acc: any) => {
+                    const identifier = acc.iban || acc.bban || acc.masked_pan || `acc${Math.random()}`;
+                    return {
+                        id: acc.resource_id,
+                        name: acc.name,
+                        balance: acc.balances?.interim_available?.amount ?? 0,
+                        currency: acc.currency as Currency,
+                        institution: 'Enable Bank', // Hardcoded as the API response doesn't contain this per account
+                        type: mapEnableBankingAccountType(acc.cash_account_type),
+                        last4: identifier.slice(-4),
+                    };
+                });
+                
+                setRemoteAccounts(mappedAccounts);
+                setLinkModalOpen(true);
+
+            } catch (err: any) {
+                setOauthError(err.message || "An unknown error occurred during the bank connection process.");
+            } finally {
+                setIsProcessingOAuth(false);
+            }
+        }
+    }, [enableBankingSettings]);
+
+    // Handle Enable Banking OAuth callback on initial page load
+    useEffect(() => {
+        if (isDataLoaded) {
+            processOAuthCallback();
+        }
+    }, [isDataLoaded, processOAuthCallback]);
 
 
   const dataToSave: FinancialData = useMemo(() => ({
@@ -708,7 +852,37 @@ export const App: React.FC = () => {
   }, [theme]);
   
   const viewingAccount = useMemo(() => accounts.find(a => a.id === viewingAccountId), [accounts, viewingAccountId]);
+
+  const handleStartBankConnection = () => {
+    const { clientId } = enableBankingSettings;
+    if (!clientId) {
+      alert("Please configure your Enable Banking Client ID in Settings first.");
+      setCurrentPage('Enable Banking');
+      return;
+    }
+    
+    // Generate and save state for CSRF protection
+    const state = uuidv4();
+    localStorage.setItem('eb_oauth_state', state);
+
+    // Instead of redirecting, show the consent screen
+    setConnectModalOpen(false);
+    setConsentScreenOpen(true);
+  };
   
+  const handleConsentAuthorize = () => {
+    const savedState = localStorage.getItem('eb_oauth_state');
+    const fakeCode = 'mock_auth_code_for_finaura_12345';
+    
+    setConsentScreenOpen(false);
+    processOAuthCallback(fakeCode, savedState);
+  };
+
+  const handleConsentDeny = () => {
+      localStorage.removeItem('eb_oauth_state');
+      setConsentScreenOpen(false);
+  };
+
   const renderPage = () => {
     if (currentPage === 'AccountDetail' && viewingAccount) {
         return <AccountDetail account={viewingAccount} accounts={accounts} transactions={transactions} allCategories={[...incomeCategories, ...expenseCategories]} setCurrentPage={setCurrentPage} saveTransaction={handleSaveTransaction} />;
@@ -735,8 +909,28 @@ export const App: React.FC = () => {
     }
   }
 
-  if (!isDataLoaded) {
-    return <div className="flex items-center justify-center min-h-screen bg-light-bg dark:bg-dark-bg"><div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary-500"></div></div>;
+  if (!isDataLoaded || isProcessingOAuth) {
+    return (
+        <div className="flex flex-col items-center justify-center min-h-screen bg-light-bg dark:bg-dark-bg">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary-500"></div>
+            {isProcessingOAuth && <p className="mt-4 text-lg font-semibold">Connecting to your bank...</p>}
+        </div>
+    );
+  }
+
+  if (oauthError) {
+    return (
+        <div className="flex flex-col items-center justify-center min-h-screen bg-light-bg dark:bg-dark-bg p-4">
+            <Card className="max-w-md text-center">
+                <span className="material-symbols-outlined text-5xl text-red-500">error</span>
+                <h2 className="text-2xl font-bold mt-4">Connection Failed</h2>
+                <p className="mt-2 text-light-text-secondary dark:text-dark-text-secondary">{oauthError}</p>
+                <button onClick={() => setOauthError(null)} className={`${BTN_PRIMARY_STYLE} mt-6`}>
+                    Back to App
+                </button>
+            </Card>
+        </div>
+    );
   }
 
   if (!isAuthenticated || !user) {
@@ -750,84 +944,15 @@ export const App: React.FC = () => {
       <EnableBankingConnectModal 
         isOpen={isConnectModalOpen}
         onClose={() => setConnectModalOpen(false)}
-        isConnecting={isConnectingToBank}
-        onConnect={() => {
-            setIsConnectingToBank(true);
-            // Simulate fetching data from Enable Banking API, using a structure based on their official documentation.
-            setTimeout(() => {
-                const mockEnableBankingResponse = {
-                    accounts: [
-                        {
-                            resource_id: "8e8a2e78-7b4d-4e9e-b2d9-3e3e3e3e3e3e",
-                            iban: "FI7913893000212384",
-                            currency: "EUR",
-                            name: "Personal Account",
-                            product: "Personal Checking Account",
-                            cash_account_type: "CACC",
-                            status: "enabled",
-                            balances: {
-                                interim_available: { amount: 5420.12, date: "2024-05-20" }
-                            }
-                        },
-                        {
-                            resource_id: "c1a9f5d7-0a3b-4c6e-8a1d-9f9f9f9f9f9f",
-                            iban: "FI2112345600000785",
-                            currency: "EUR",
-                            name: "Savings",
-                            product: "E-Savings Account",
-                            cash_account_type: "SVGS",
-                            status: "enabled",
-                            balances: {
-                                interim_available: { amount: 12800.50, date: "2024-05-20" }
-                            }
-                        },
-                        {
-                            resource_id: "b2b8e4c6-1b2c-3d4e-5f6g-8h8h8h8h8h8h",
-                            bban: "12345678901234",
-                            currency: "EUR",
-                            name: "Stock Portfolio",
-                            product: "Investment Account",
-                            cash_account_type: "CASH",
-                            status: "enabled",
-                            balances: {
-                                interim_available: { amount: 25345.89, date: "2024-05-20" }
-                            }
-                        },
-                        {
-                            resource_id: "d3c7d3b5-2c1d-4e5f-6g7h-9i9i9i9i9i9i",
-                            masked_pan: "4111********1111",
-                            currency: "EUR",
-                            name: "Visa Gold",
-                            product: "Credit Card Account",
-                            cash_account_type: "CARD",
-                            status: "enabled",
-                            balances: {
-                                interim_available: { amount: -450.76, date: "2024-05-20" }
-                            }
-                        }
-                    ]
-                };
-
-                const mappedAccounts: RemoteAccount[] = mockEnableBankingResponse.accounts.map((acc: any) => {
-                    const identifier = acc.iban || acc.bban || acc.masked_pan || `acc${Math.random()}`;
-                    return {
-                        id: acc.resource_id,
-                        name: acc.name,
-                        balance: acc.balances.interim_available.amount,
-                        currency: acc.currency as Currency,
-                        institution: 'Enable Bank', // Hardcoded as the API response doesn't contain this per account
-                        type: mapEnableBankingAccountType(acc.cash_account_type),
-                        last4: identifier.slice(-4),
-                    };
-                });
-                
-                setRemoteAccounts(mappedAccounts);
-                setIsConnectingToBank(false);
-                setConnectModalOpen(false);
-                setLinkModalOpen(true);
-            }, 2000);
-        }}
+        isConnecting={false}
+        onConnect={handleStartBankConnection}
       />
+      {isConsentScreenOpen && (
+          <EnableBankingConsent
+              onAuthorize={handleConsentAuthorize}
+              onDeny={handleConsentDeny}
+          />
+      )}
       <EnableBankingLinkAccountsModal
         isOpen={isLinkModalOpen}
         onClose={() => setLinkModalOpen(false)}

@@ -16,7 +16,7 @@ services:
     build: ./server
     container_name: finaura_server
     ports:
-      - "3000:3000"
+      - "3230:3000"
     depends_on:
       db:
         condition: service_healthy

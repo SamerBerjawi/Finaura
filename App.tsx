@@ -99,6 +99,21 @@ const initialFinancialData: FinancialData = {
     },
 };
 
+const mapEnableBankingAccountType = (cashAccountType?: string): AccountType => {
+  switch (cashAccountType) {
+    case 'CACC': // Current Account
+      return 'Checking';
+    case 'SVGS': // Savings Account
+      return 'Savings';
+    case 'CARD': // Card Account
+      return 'Credit Card';
+    case 'CASH': // Cash Account, often used for investments in PSD2 context
+      return 'Investment';
+    default:
+      return 'Other Assets';
+  }
+};
+
 
 // FIX: Add export to create a named export for the App component.
 export const App: React.FC = () => {
@@ -738,17 +753,75 @@ export const App: React.FC = () => {
         isConnecting={isConnectingToBank}
         onConnect={() => {
             setIsConnectingToBank(true);
-            // Simulate a network request to a banking provider
+            // Simulate fetching data from Enable Banking API, using a structure based on their official documentation.
             setTimeout(() => {
-                // This is where a real app would get data back from the provider's SDK
-                const mockRemoteAccounts: RemoteAccount[] = [
-                    {id: 'eb-acc-1', name: 'BNP Paribas Fortis Checking', balance: 5420.12, currency: 'EUR', institution: 'BNP Paribas Fortis', type: 'Checking', last4: '9876'},
-                    {id: 'eb-acc-2', name: 'BNP Paribas Fortis Savings', balance: 12800.50, currency: 'EUR', institution: 'BNP Paribas Fortis', type: 'Savings', last4: '5432'},
-                    {id: 'eb-acc-3', name: 'Keytrade Trading Account', balance: 25345.89, currency: 'EUR', institution: 'Keytrade Bank', type: 'Investment', last4: '1122'},
-                    {id: 'eb-acc-4', name: 'Visa Card', balance: -450.76, currency: 'EUR', institution: 'Belfius', type: 'Credit Card', last4: '3344'},
-                ];
-                setRemoteAccounts(mockRemoteAccounts);
+                const mockEnableBankingResponse = {
+                    accounts: [
+                        {
+                            resource_id: "8e8a2e78-7b4d-4e9e-b2d9-3e3e3e3e3e3e",
+                            iban: "FI7913893000212384",
+                            currency: "EUR",
+                            name: "Personal Account",
+                            product: "Personal Checking Account",
+                            cash_account_type: "CACC",
+                            status: "enabled",
+                            balances: {
+                                interim_available: { amount: 5420.12, date: "2024-05-20" }
+                            }
+                        },
+                        {
+                            resource_id: "c1a9f5d7-0a3b-4c6e-8a1d-9f9f9f9f9f9f",
+                            iban: "FI2112345600000785",
+                            currency: "EUR",
+                            name: "Savings",
+                            product: "E-Savings Account",
+                            cash_account_type: "SVGS",
+                            status: "enabled",
+                            balances: {
+                                interim_available: { amount: 12800.50, date: "2024-05-20" }
+                            }
+                        },
+                        {
+                            resource_id: "b2b8e4c6-1b2c-3d4e-5f6g-8h8h8h8h8h8h",
+                            bban: "12345678901234",
+                            currency: "EUR",
+                            name: "Stock Portfolio",
+                            product: "Investment Account",
+                            cash_account_type: "CASH",
+                            status: "enabled",
+                            balances: {
+                                interim_available: { amount: 25345.89, date: "2024-05-20" }
+                            }
+                        },
+                        {
+                            resource_id: "d3c7d3b5-2c1d-4e5f-6g7h-9i9i9i9i9i9i",
+                            masked_pan: "4111********1111",
+                            currency: "EUR",
+                            name: "Visa Gold",
+                            product: "Credit Card Account",
+                            cash_account_type: "CARD",
+                            status: "enabled",
+                            balances: {
+                                interim_available: { amount: -450.76, date: "2024-05-20" }
+                            }
+                        }
+                    ]
+                };
+
+                const mappedAccounts: RemoteAccount[] = mockEnableBankingResponse.accounts.map((acc: any) => {
+                    const identifier = acc.iban || acc.bban || acc.masked_pan || `acc${Math.random()}`;
+                    return {
+                        id: acc.resource_id,
+                        name: acc.name,
+                        balance: acc.balances.interim_available.amount,
+                        currency: acc.currency as Currency,
+                        institution: 'Enable Bank', // Hardcoded as the API response doesn't contain this per account
+                        type: mapEnableBankingAccountType(acc.cash_account_type),
+                        last4: identifier.slice(-4),
+                    };
+                });
                 
+                setRemoteAccounts(mappedAccounts);
                 setIsConnectingToBank(false);
                 setConnectModalOpen(false);
                 setLinkModalOpen(true);

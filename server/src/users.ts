@@ -1,18 +1,18 @@
 // FIX: Consolidate express imports and use explicit types from the express namespace to resolve type conflicts.
-import express from 'express';
+import express, { Router, Response } from 'express';
 import { pool } from './database';
 import { authMiddleware, adminMiddleware, AuthRequest } from './middleware';
 import bcrypt from 'bcryptjs';
 
 // FIX: Create router from express instance.
-export const usersRouter = express.Router();
+export const usersRouter: Router = express.Router();
 
 // FIX: Correctly typed middleware and route handlers to resolve overload errors.
 usersRouter.use(authMiddleware, adminMiddleware);
 
 // Get all users (admin only)
 // FIX: Use express.Response for route handler to resolve type errors.
-usersRouter.get('/', async (req: AuthRequest, res: express.Response) => {
+usersRouter.get('/', async (req: AuthRequest, res: Response) => {
     try {
         const result = await pool.query('SELECT email, first_name, last_name, role, status, last_login, profile_picture_url, is_2fa_enabled FROM users ORDER BY last_name, first_name');
         res.json(result.rows);
@@ -24,7 +24,7 @@ usersRouter.get('/', async (req: AuthRequest, res: express.Response) => {
 
 // Update a user (admin only)
 // FIX: Use express.Response for route handler to resolve type errors.
-usersRouter.put('/:email', async (req: AuthRequest, res: express.Response) => {
+usersRouter.put('/:email', async (req: AuthRequest, res: Response) => {
     const { email } = req.params;
     const { role, status } = req.body;
     
@@ -49,7 +49,7 @@ usersRouter.put('/:email', async (req: AuthRequest, res: express.Response) => {
 
 // Delete a user (admin only)
 // FIX: Use express.Response for route handler to resolve type errors.
-usersRouter.delete('/:email', async (req: AuthRequest, res: express.Response) => {
+usersRouter.delete('/:email', async (req: AuthRequest, res: Response) => {
     const { email } = req.params;
     
     if (email === req.user.email) {
@@ -70,7 +70,7 @@ usersRouter.delete('/:email', async (req: AuthRequest, res: express.Response) =>
 
 // Reset a user's password (admin only)
 // FIX: Use express.Response for route handler to resolve type errors.
-usersRouter.post('/:email/reset-password', async (req: AuthRequest, res: express.Response) => {
+usersRouter.post('/:email/reset-password', async (req: AuthRequest, res: Response) => {
     const { email } = req.params;
     if (email === req.user.email) {
         return res.status(403).json({ message: "Cannot reset your own password here." });

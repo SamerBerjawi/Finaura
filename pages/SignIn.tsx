@@ -6,15 +6,18 @@ import Card from '../components/Card';
 interface SignInProps {
   onSignIn: (email: string, password: string) => void;
   onNavigateToSignUp: () => void;
+  isLoading: boolean;
+  error: string | null;
 }
 
-const SignIn: React.FC<SignInProps> = ({ onSignIn, onNavigateToSignUp }) => {
+const SignIn: React.FC<SignInProps> = ({ onSignIn, onNavigateToSignUp, isLoading, error }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const theme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLoading) return;
     onSignIn(email, password);
   };
 
@@ -57,8 +60,19 @@ const SignIn: React.FC<SignInProps> = ({ onSignIn, onNavigateToSignUp }) => {
                 autoComplete="current-password"
               />
             </div>
-            <button type="submit" className={`${BTN_PRIMARY_STYLE} w-full !py-3 !text-base`}>
-              Sign In
+
+            {error && <p className="text-sm text-center text-semantic-red">{error}</p>}
+
+            <button type="submit" className={`${BTN_PRIMARY_STYLE} w-full !py-3 !text-base disabled:opacity-70 disabled:cursor-not-allowed`} disabled={isLoading}>
+              {isLoading ? (
+                <div className="flex items-center justify-center">
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Signing In...
+                </div>
+              ) : 'Sign In'}
             </button>
           </form>
           <p className="text-center text-sm text-light-text-secondary dark:text-dark-text-secondary mt-6">

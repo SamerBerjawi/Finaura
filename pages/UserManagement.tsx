@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { User } from '../types';
 import Card from '../components/Card';
 import { BTN_PRIMARY_STYLE, BTN_SECONDARY_STYLE } from '../constants';
@@ -6,16 +6,15 @@ import ConfirmationModal from '../components/ConfirmationModal';
 import InviteUserModal from '../components/InviteUserModal';
 import EditUserModal from '../components/EditUserModal';
 
+const API_BASE_URL = 'http://localhost:3000/api';
+
 interface UserManagementProps {
   currentUser: User;
-  allUsers: User[];
-  onUpdateUser: (email: string, updates: Partial<User>) => void;
-  onDeleteUser: (email: string) => void;
-  onInviteUser: (newUser: Pick<User, 'firstName' | 'lastName' | 'email' | 'role'>) => void;
-  onAdminPasswordReset: (email: string) => void;
 }
 
-const UserManagement: React.FC<UserManagementProps> = ({ currentUser, allUsers, onUpdateUser, onDeleteUser, onInviteUser, onAdminPasswordReset }) => {
+const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) => {
+    const [allUsers, setAllUsers] = useState<User[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
     const [isInviteModalOpen, setInviteModalOpen] = useState(false);
     const [isEditModalOpen, setEditModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -23,8 +22,30 @@ const UserManagement: React.FC<UserManagementProps> = ({ currentUser, allUsers, 
     const [activeActionMenu, setActiveActionMenu] = useState<string | null>(null);
     const actionMenuRef = useRef<HTMLDivElement>(null);
 
+    const fetchUsers = useCallback(async () => {
+        const token = localStorage.getItem('finaura_token');
+        try {
+            const res = await fetch(`${API_BASE_URL}/users`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const users = await res.json();
+                setAllUsers(users.map((u: any) => ({...u, firstName: u.first_name, lastName: u.last_name, profilePictureUrl: u.profile_picture_url, is2FAEnabled: u.is_2fa_enabled, lastLogin: u.last_login })));
+            } else {
+                console.error("Failed to fetch users");
+            }
+        } catch (error) {
+            console.error("Error fetching users", error);
+        } finally {
+            setIsLoading(false);
+        }
+    }, []);
 
-    React.useEffect(() => {
+    useEffect(() => {
+        fetchUsers();
+    }, [fetchUsers]);
+    
+    useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (actionMenuRef.current && !actionMenuRef.current.contains(event.target as Node)) {
                 setActiveActionMenu(null);
@@ -33,6 +54,44 @@ const UserManagement: React.FC<UserManagementProps> = ({ currentUser, allUsers, 
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
+
+    const makeApiCall = async (endpoint: string, method: string, body?: any) => {
+        const token = localStorage.getItem('finaura_token');
+        try {
+            const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+                method,
+                headers: { 
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(body)
+            });
+            if (res.ok) {
+                fetchUsers(); // Refresh data on success
+                return await res.json();
+            } else {
+                const error = await res.json();
+                alert(`Error: ${error.message}`);
+                return null;
+            }
+        } catch (error) {
+            alert('An unexpected error occurred.');
+            return null;
+        }
+    };
+    
+    const onInviteUser = (newUser: Pick<User, 'firstName' | 'lastName' | 'email' | 'role'>) => {
+        // This is not implemented on the backend yet, but the structure is here.
+        alert("Invite user functionality not fully implemented on backend.");
+    };
+    const onUpdateUser = (email: string, updates: Partial<User>) => makeApiCall(`/users/${email}`, 'PUT', updates);
+    const onDeleteUser = (email: string) => makeApiCall(`/users/${email}`, 'DELETE');
+    const onAdminPasswordReset = async (email: string) => {
+        const result = await makeApiCall(`/users/${email}/reset-password`, 'POST');
+        if (result && result.message) {
+            alert(result.message);
+        }
+    };
 
     if (currentUser.role !== 'Administrator') {
         return (

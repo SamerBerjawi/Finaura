@@ -1,11 +1,62 @@
-
 import React from 'react';
+import { Page, User } from '../types';
+import Card from '../components/Card';
 
-const Settings: React.FC = () => {
+const settingsLinks = [
+  { page: 'Preferences', icon: 'tune', title: 'Preferences', description: 'Customize the look and feel of the app.' },
+  { page: 'Personal Info', icon: 'person', title: 'Personal Info', description: 'Update your profile and security settings.' },
+  { page: 'Categories', icon: 'category', title: 'Categories', description: 'Manage your income and expense categories.' },
+  { page: 'Tags', icon: 'label', title: 'Tags', description: 'Organize transactions with custom tags.' },
+  { page: 'User Management', icon: 'manage_accounts', title: 'User Management', description: 'Manage users and their permissions.', adminOnly: true },
+  { page: 'Enable Banking', icon: 'sync', title: 'Enable Banking', description: 'Connect your bank accounts for auto-sync.' },
+  { page: 'Data Management', icon: 'database', title: 'Data Management', description: 'Import, export, or reset your account data.' },
+];
+
+interface SettingsProps {
+  setCurrentPage: (page: Page) => void;
+  user: User;
+}
+
+const Settings: React.FC<SettingsProps> = ({ setCurrentPage, user }) => {
+  
+  const handleNavigation = (page: Page) => {
+    // This provides a smoother perceived navigation on mobile
+    if (window.innerWidth < 768) {
+      setTimeout(() => setCurrentPage(page), 150);
+    } else {
+      setCurrentPage(page);
+    }
+  };
+
   return (
-    <div>
-      <h2 className="text-3xl font-bold text-light-text dark:text-dark-text">Settings</h2>
-      <p className="text-light-text-secondary dark:text-dark-text-secondary mt-1">This page is under construction. Configure your application settings here soon!</p>
+    <div className="space-y-8">
+      <header>
+        <h2 className="text-3xl font-bold text-light-text dark:text-dark-text">Settings</h2>
+        <p className="text-light-text-secondary dark:text-dark-text-secondary mt-1">Select a category to configure application settings.</p>
+      </header>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {settingsLinks.map(link => {
+          if (link.adminOnly && user.role !== 'Administrator') {
+            return null;
+          }
+          return (
+            <Card key={link.page} onClick={() => handleNavigation(link.page as Page)} className="cursor-pointer hover:shadow-lg dark:hover:bg-dark-card/60 transition-all duration-200 group">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="bg-primary-100 dark:bg-primary-900/50 p-3 rounded-lg group-hover:bg-primary-200/80 dark:group-hover:bg-primary-900/80 transition-colors">
+                    <span className="material-symbols-outlined text-primary-500 text-2xl">{link.icon}</span>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg">{link.title}</h3>
+                    <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary">{link.description}</p>
+                  </div>
+                </div>
+                <span className="material-symbols-outlined text-light-text-secondary dark:text-dark-text-secondary transform -translate-x-2 group-hover:translate-x-0 transition-transform">chevron_right</span>
+              </div>
+            </Card>
+          )
+        })}
+      </div>
     </div>
   );
 };

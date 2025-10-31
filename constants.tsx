@@ -37,19 +37,7 @@ export const NAV_ITEMS: NavItem[] = [
   { name: 'Warrants', icon: 'verified' },
   { name: 'Schedule & Bills', icon: 'calendar_month' },
   { name: 'Tasks', icon: 'task_alt' },
-  { 
-    name: 'Settings', 
-    icon: 'settings',
-    subItems: [
-      { name: 'Preferences', icon: 'tune' },
-      { name: 'Personal Info', icon: 'person' },
-      { name: 'Categories', icon: 'category' },
-      { name: 'Tags', icon: 'label' },
-      { name: 'User Management', icon: 'manage_accounts' },
-      { name: 'Enable Banking', icon: 'sync' },
-      { name: 'Data Management', icon: 'database' },
-    ]
-  },
+  { name: 'Settings', icon: 'settings' },
 ];
 
 export const ASSET_TYPES: AccountType[] = ['Checking', 'Savings', 'Investment', 'Crypto', 'Property', 'Vehicle', 'Other Assets'];

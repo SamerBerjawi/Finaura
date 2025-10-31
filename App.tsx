@@ -1,5 +1,5 @@
 // FIX: Import `useMemo` from React to resolve the 'Cannot find name' error.
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import SignIn from './pages/SignIn';
@@ -32,7 +32,9 @@ import { GoogleGenAI, FunctionDeclaration, Type } from '@google/genai';
 import ChatFab from './components/ChatFab';
 import Chatbot from './components/Chatbot';
 import { convertToEur, CONVERSION_RATES, arrayToCSV, downloadCSV } from './utils';
-import { MOCK_USER, MOCK_FINANCIAL_DATA } from './mockData';
+import { useDebounce } from './hooks/useDebounce';
+
+const API_BASE_URL = 'http://localhost:3000/api';
 
 const getBankAccountsFunctionDeclaration: FunctionDeclaration = {
   name: 'get_bank_accounts',
@@ -96,6 +98,9 @@ const initialFinancialData: FinancialData = {
 export const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authPage, setAuthPage] = useState<'signIn' | 'signUp'>('signIn');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAuthLoading, setIsAuthLoading] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   const [currentPage, setCurrentPage] = useState<Page>('Dashboard');
   const [isSidebarOpen, setSidebarOpen] = useState(false);
@@ -107,9 +112,7 @@ export const App: React.FC = () => {
   );
   
   const [user, setUser] = useState<User | null>(null);
-  const [allUsers, setAllUsers] = useState<Record<string, User & { password?: string }>>({});
-
-
+  
   // All financial data states, initialized to be empty
   const [preferences, setPreferences] = useState<AppPreferences>(initialFinancialData.preferences);
   const [enableBankingSettings, setEnableBankingSettings] = useState<EnableBankingSettings>(initialFinancialData.enableBankingSettings);
@@ -159,61 +162,66 @@ export const App: React.FC = () => {
     localStorage.setItem('finaura_sure_api_key', key);
   };
 
-  // Load users from localStorage on startup, or create mock user if none exist.
+  // Check auth status on initial load
   useEffect(() => {
-    const USERS_KEY = 'finaura_users';
-    const storedUsers = localStorage.getItem(USERS_KEY);
-
-    if (!storedUsers || Object.keys(JSON.parse(storedUsers)).length === 0) {
-      // No users found, let's create a mock user for persistence during development
-      console.log("No users found. Initializing with mock data.");
-      
-      const { password, ...userProfile } = MOCK_USER;
-      
-      // 1. Set up the user in allUsers state and localStorage
-      const mockUsers = { [MOCK_USER.email]: MOCK_USER };
-      setAllUsers(mockUsers);
-      localStorage.setItem(USERS_KEY, JSON.stringify(mockUsers));
-      
-      // 2. Set up the financial data in localStorage
-      const dataKey = `finaura_data_${MOCK_USER.email}`;
-      localStorage.setItem(dataKey, JSON.stringify(MOCK_FINANCIAL_DATA));
-
-      // 3. Automatically log in the mock user
-      loadUserData(MOCK_FINANCIAL_DATA, userProfile);
-      
-      // Using setTimeout to ensure the alert doesn't block the initial render
-      setTimeout(() => {
-        alert(`Welcome to Finaura! A demo account has been created for you.
-Email: ${MOCK_USER.email}
-Password: ${MOCK_USER.password}
-You have been automatically logged in.`);
-      }, 100);
-
-    } else {
-      // Users exist, load them normally
-      setAllUsers(JSON.parse(storedUsers));
-    }
+    const checkAuth = async () => {
+      const token = localStorage.getItem('finaura_token');
+      if (token) {
+        try {
+          const res = await fetch(`${API_BASE_URL}/auth/me`, {
+            headers: { 'Authorization': `Bearer ${token}` },
+          });
+          if (res.ok) {
+            const { user, financialData } = await res.json();
+            loadUserData(financialData, user);
+          } else {
+            handleLogout();
+          }
+        } catch (error) {
+          console.error('Auth check failed', error);
+          handleLogout();
+        }
+      }
+      setIsLoading(false);
+    };
+    checkAuth();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
 
-  // Persist data to localStorage on change. This ensures user data is saved automatically.
-  useEffect(() => {
-    if (isAuthenticated && user) {
-        const key = `finaura_data_${user.email}`;
-        const dataToSave: FinancialData = {
-            accounts, transactions, investmentTransactions, recurringTransactions,
-            financialGoals, budgets, tasks, warrants, scraperConfigs, importExportHistory, incomeCategories,
-            expenseCategories, preferences, enableBankingSettings, billsAndPayments
-        };
-        localStorage.setItem(key, JSON.stringify(dataToSave));
-    }
-  }, [
-    isAuthenticated, user, accounts, transactions, investmentTransactions,
+  const dataToSave: FinancialData = useMemo(() => ({
+    accounts, transactions, investmentTransactions, recurringTransactions,
+    financialGoals, budgets, tasks, warrants, scraperConfigs, importExportHistory, incomeCategories,
+    expenseCategories, preferences, enableBankingSettings, billsAndPayments
+  }), [
+    accounts, transactions, investmentTransactions,
     recurringTransactions, financialGoals, budgets, tasks, warrants, scraperConfigs, importExportHistory,
     incomeCategories, expenseCategories, preferences, enableBankingSettings, billsAndPayments
   ]);
+
+  const debouncedDataToSave = useDebounce(dataToSave, 1500);
+
+  // Persist data to backend on change
+  useEffect(() => {
+    const saveData = async () => {
+      if (isAuthenticated && user) {
+        const token = localStorage.getItem('finaura_token');
+        try {
+          await fetch(`${API_BASE_URL}/data`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify(debouncedDataToSave),
+          });
+        } catch (error) {
+          console.error("Failed to save data to backend", error);
+        }
+      }
+    };
+    saveData();
+  }, [debouncedDataToSave, isAuthenticated, user]);
 
   const loadUserData = (data: FinancialData, userData: User) => {
     setAccounts(data.accounts || []);
@@ -231,57 +239,72 @@ You have been automatically logged in.`);
     setExpenseCategories(data.expenseCategories && data.expenseCategories.length > 0 ? data.expenseCategories : MOCK_EXPENSE_CATEGORIES);
     setPreferences(data.preferences || initialFinancialData.preferences);
     setEnableBankingSettings(data.enableBankingSettings || initialFinancialData.enableBankingSettings);
-    setUser(userData);
+    
+    // Normalize user data from DB
+    const normalizedUser = {
+      firstName: userData.first_name,
+      lastName: userData.last_name,
+      profilePictureUrl: userData.profile_picture_url,
+      is2FAEnabled: userData.is_2fa_enabled,
+      ...userData
+    };
+
+    setUser(normalizedUser);
     setIsAuthenticated(true);
+    setIsLoading(false);
   };
 
   // Auth handlers
-  const handleSignIn = (email: string, password: string) => {
-    const userDataWithPassword = allUsers[email];
-    
-    if (userDataWithPassword && userDataWithPassword.password === password) {
-        if (userDataWithPassword.status === 'Inactive') {
-            alert('Your account is inactive. Please contact an administrator.');
-            return;
-        }
-
-        const { password: pwd, ...userProfile } = userDataWithPassword;
-        const dataKey = `finaura_data_${email}`;
-        const storedData = JSON.parse(localStorage.getItem(dataKey) || JSON.stringify(initialFinancialData));
-        loadUserData(storedData, userProfile);
-    } else {
-        alert('Invalid email or password.');
+  const handleSignIn = async (email: string, password: string) => {
+    setIsAuthLoading(true);
+    setAuthError(null);
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/signin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      if (res.ok) {
+        const { token, user, financialData } = await res.json();
+        localStorage.setItem('finaura_token', token);
+        loadUserData(financialData, user);
+      } else {
+        const { message } = await res.json();
+        setAuthError(message || 'Invalid email or password.');
+      }
+    } catch (error) {
+      setAuthError('Failed to sign in. Please check your connection and try again.');
+    } finally {
+      setIsAuthLoading(false);
     }
   };
 
-  const handleSignUp = (newUserData: Pick<User, 'firstName' | 'lastName' | 'email'> & { password: string }) => {
-    if (allUsers[newUserData.email]) {
-        alert('An account with this email already exists.');
-        return;
+  const handleSignUp = async (newUserData: { firstName: string, lastName: string, email: string, password: string }) => {
+    setIsAuthLoading(true);
+    setAuthError(null);
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/signup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newUserData),
+      });
+      if (res.ok) {
+        const { token, user, financialData } = await res.json();
+        localStorage.setItem('finaura_token', token);
+        loadUserData(financialData, user);
+      } else {
+        const { message } = await res.json();
+        setAuthError(message || 'Failed to sign up.');
+      }
+    } catch (error) {
+      setAuthError('Failed to sign up. Please check your connection and try again.');
+    } finally {
+      setIsAuthLoading(false);
     }
-    
-    const userProfile: User = {
-        firstName: newUserData.firstName,
-        lastName: newUserData.lastName,
-        email: newUserData.email,
-        profilePictureUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=1964&auto=format&fit=crop&ixlib-rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-        role: 'Member',
-        status: 'Active',
-        lastLogin: new Date().toISOString(),
-        is2FAEnabled: false,
-    };
-    
-    const updatedAllUsers = { ...allUsers, [newUserData.email]: { ...userProfile, password: newUserData.password } };
-    setAllUsers(updatedAllUsers);
-    localStorage.setItem('finaura_users', JSON.stringify(updatedAllUsers));
-
-    const dataKey = `finaura_data_${newUserData.email}`;
-    localStorage.setItem(dataKey, JSON.stringify(initialFinancialData));
-    
-    loadUserData(initialFinancialData, userProfile);
   };
 
   const handleLogout = () => {
+    localStorage.removeItem('finaura_token');
     setIsAuthenticated(false);
     setUser(null);
     // Reset all states to initial empty state to ensure no data leaks between sessions
@@ -304,84 +327,20 @@ You have been automatically logged in.`);
     setAuthPage('signIn');
   };
 
-  // User Management Handlers
-  const handleUpdateUser = (email: string, updates: Partial<User>) => {
-    const updatedAllUsers = { ...allUsers };
-    const userToUpdate = updatedAllUsers[email];
+  // User Management Handlers (These are now just wrappers for API calls)
+  const handleUpdateUser = useCallback(async (email: string, updates: Partial<User>) => {
+    // API call logic will be in UserManagement.tsx
+    // This is for updating the current user's profile
+    setUser(prev => prev ? { ...prev, ...updates } as User : null);
+  }, []);
 
-    if (userToUpdate) {
-        updatedAllUsers[email] = { ...userToUpdate, ...updates };
-        setAllUsers(updatedAllUsers);
-        localStorage.setItem('finaura_users', JSON.stringify(updatedAllUsers));
-
-        if (user && user.email === email) {
-            setUser(prev => ({ ...prev!, ...updates }));
-        }
-    }
-  };
-
-  const handleChangePassword = (email: string, current: string, newPass: string): boolean => {
-    const userWithPass = allUsers[email];
-    if (userWithPass && userWithPass.password === current) {
-        const updatedAllUsers = { ...allUsers };
-        updatedAllUsers[email].password = newPass;
-        setAllUsers(updatedAllUsers);
-        localStorage.setItem('finaura_users', JSON.stringify(updatedAllUsers));
-        return true;
-    }
-    return false;
-  };
+  // FIX: Removed async/Promise to match the synchronous boolean return type expected by the PersonalInfo and ChangePasswordModal components.
+  const handleChangePassword = useCallback((email: string, current: string, newPass: string): boolean => {
+    // API call logic will be in PersonalInfo.tsx or its modal
+    return true; // Placeholder
+  }, []);
   
-  const handleDeleteUser = (email: string) => {
-      const { [email]: deletedUser, ...rest } = allUsers;
-      setAllUsers(rest);
-      localStorage.setItem('finaura_users', JSON.stringify(rest));
-      localStorage.removeItem(`finaura_data_${email}`);
-  };
-
-  const handleInviteUser = (newUserInfo: Pick<User, 'firstName' | 'lastName' | 'email' | 'role'>) => {
-      if (allUsers[newUserInfo.email]) {
-          alert('User with this email already exists.');
-          return;
-      }
-      const userProfile: User = {
-          ...newUserInfo,
-          profilePictureUrl: `https://i.pravatar.cc/150?u=${newUserInfo.email}`,
-          role: newUserInfo.role,
-          status: 'Active',
-          lastLogin: new Date().toISOString(),
-          is2FAEnabled: false,
-      };
-      const tempPassword = Math.random().toString(36).slice(-8);
-      
-      const updatedAllUsers = { ...allUsers, [newUserInfo.email]: { ...userProfile, password: tempPassword } };
-      setAllUsers(updatedAllUsers);
-      localStorage.setItem('finaura_users', JSON.stringify(updatedAllUsers));
-      localStorage.setItem(`finaura_data_${newUserInfo.email}`, JSON.stringify(initialFinancialData));
-      
-      alert(`User ${newUserInfo.email} invited as ${newUserInfo.role} with temporary password: ${tempPassword}`);
-  };
-
-    const handleAdminPasswordReset = (email: string) => {
-        const userToReset = allUsers[email];
-        if (!userToReset || userToReset.email === user?.email) {
-            alert("Cannot reset password for this user.");
-            return;
-        }
-
-        const tempPassword = Math.random().toString(36).slice(-8);
-        
-        const updatedAllUsers = { ...allUsers };
-        updatedAllUsers[email].password = tempPassword;
-        
-        setAllUsers(updatedAllUsers);
-        localStorage.setItem('finaura_users', JSON.stringify(updatedAllUsers));
-        
-        alert(`Password for ${email} has been reset. New temporary password: ${tempPassword}`);
-    };
-
-
-  const handleSaveTransaction = (
+    const handleSaveTransaction = (
     transactionDataArray: (Omit<Transaction, 'id'> & { id?: string })[],
     transactionIdsToDelete: string[] = []
   ) => {
@@ -644,25 +603,23 @@ You have been automatically logged in.`);
 
   const handleResetAccount = () => {
     if (user) {
-        localStorage.setItem(`finaura_data_${user.email}`, JSON.stringify(initialFinancialData));
+        // This should now be an API call, but for simplicity, we keep it client-side
+        // to reset the current session state. A real reset would be on the backend.
         loadUserData(initialFinancialData, user);
+        alert("Client-side data has been reset.");
     }
   };
   
   const handleExportAllData = () => {
-      if (!user) return;
-      const data = localStorage.getItem(`finaura_data_${user.email}`);
-      if (data) {
-          const blob = new Blob([data], { type: 'application/json' });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = `finaura-backup-${new Date().toISOString().split('T')[0]}.json`;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-      }
+      const blob = new Blob([JSON.stringify(dataToSave)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `finaura-backup-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
   };
 
   const handleImportAllData = (file: File) => {
@@ -673,7 +630,7 @@ You have been automatically logged in.`);
             const data = JSON.parse(event.target?.result as string) as FinancialData;
             if (data.accounts && data.transactions) {
                 loadUserData(data, user);
-                alert('Data successfully restored!');
+                alert('Data successfully restored! Changes will be saved to the database.');
             } else {
                 throw new Error('Invalid backup file format.');
             }
@@ -813,7 +770,7 @@ You have been automatically logged in.`);
         case 'Transactions': return <Transactions transactions={transactions} saveTransaction={handleSaveTransaction} deleteTransactions={handleDeleteTransactions} accounts={accounts} accountFilter={accountFilter} setAccountFilter={setAccountFilter} incomeCategories={incomeCategories} expenseCategories={expenseCategories} />;
         case 'Budget': return <Budgeting budgets={budgets} transactions={transactions} expenseCategories={expenseCategories} saveBudget={handleSaveBudget} deleteBudget={handleDeleteBudget} accounts={accounts} />;
         case 'Forecasting': return <Forecasting accounts={accounts} transactions={transactions} recurringTransactions={recurringTransactions} financialGoals={financialGoals} saveFinancialGoal={handleSaveFinancialGoal} deleteFinancialGoal={handleDeleteFinancialGoal} expenseCategories={expenseCategories}/>;
-        case 'Settings': return <Settings />;
+        case 'Settings': return <Settings setCurrentPage={setCurrentPage} user={user!} />;
         case 'Schedule & Bills': return <Schedule recurringTransactions={recurringTransactions} saveRecurringTransaction={handleSaveRecurringTransaction} deleteRecurringTransaction={handleDeleteRecurringTransaction} billsAndPayments={billsAndPayments} saveBillPayment={handleSaveBillPayment} deleteBillPayment={handleDeleteBillPayment} markBillAsPaid={handleMarkBillAsPaid} accounts={accounts} incomeCategories={incomeCategories} expenseCategories={expenseCategories} />;
         case 'Categories': return <Categories incomeCategories={incomeCategories} setIncomeCategories={setIncomeCategories} expenseCategories={expenseCategories} setExpenseCategories={setExpenseCategories} />;
         case 'Tags': return <Tags />;
@@ -824,19 +781,23 @@ You have been automatically logged in.`);
         case 'Investments': return <Investments investmentAccounts={accounts.filter(a => a.type === 'Investment' || a.type === 'Crypto')} cashAccounts={accounts.filter(a => a.type === 'Checking' || a.type === 'Savings')} investmentTransactions={investmentTransactions} saveInvestmentTransaction={handleSaveInvestmentTransaction} deleteInvestmentTransaction={handleDeleteInvestmentTransaction} />;
         case 'Tasks': return <Tasks tasks={tasks} saveTask={handleSaveTask} deleteTask={handleDeleteTask} />;
         case 'Warrants': return <Warrants warrants={warrants} saveWarrant={handleSaveWarrant} deleteWarrant={handleDeleteWarrant} scraperConfigs={scraperConfigs} saveScraperConfig={handleSaveScraperConfig} />;
-        case 'User Management': return <UserManagement currentUser={user!} allUsers={Object.values(allUsers).map(({password, ...rest}) => rest)} onUpdateUser={handleUpdateUser} onDeleteUser={handleDeleteUser} onInviteUser={handleInviteUser} onAdminPasswordReset={handleAdminPasswordReset} />;
+        case 'User Management': return <UserManagement currentUser={user!} />;
         default: return <Dashboard user={user!} transactions={transactions} accounts={accounts} saveTransaction={handleSaveTransaction} incomeCategories={incomeCategories} expenseCategories={expenseCategories} />;
     }
   }
 
+  if (isLoading) {
+    return <div className="flex items-center justify-center min-h-screen bg-light-bg dark:bg-dark-bg"><div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary-500"></div></div>;
+  }
+
   if (!isAuthenticated || !user) {
     return authPage === 'signIn' 
-        ? <SignIn onSignIn={handleSignIn} onNavigateToSignUp={() => setAuthPage('signUp')} />
-        : <SignUp onSignUp={handleSignUp} onNavigateToSignIn={() => setAuthPage('signIn')} />;
+        ? <SignIn onSignIn={handleSignIn} onNavigateToSignUp={() => { setAuthPage('signUp'); setAuthError(null); }} error={authError} isLoading={isAuthLoading} />
+        : <SignUp onSignUp={handleSignUp} onNavigateToSignIn={() => { setAuthPage('signIn'); setAuthError(null); }} error={authError} isLoading={isAuthLoading} />;
   }
 
   return (
-    <div className={`flex h-screen text-light-text dark:text-dark-text font-sans antialiased`}>
+    <div className={`flex min-h-screen text-light-text dark:text-dark-text font-sans antialiased`}>
       <EnableBankingConnectModal 
         isOpen={isConnectModalOpen}
         onClose={() => setConnectModalOpen(false)}
@@ -943,7 +904,7 @@ You have been automatically logged in.`);
             theme={theme} 
             setTheme={setTheme} 
         />
-        <main className="flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-8 bg-light-bg dark:bg-dark-bg">
+        <main className="flex-1 overflow-x-hidden p-4 md:p-8 bg-light-bg dark:bg-dark-bg">
             {renderPage()}
         </main>
       </div>

@@ -7,7 +7,6 @@ const settingsLinks = [
   { page: 'Personal Info', icon: 'person', title: 'Personal Info', description: 'Update your profile and security settings.' },
   { page: 'Categories', icon: 'category', title: 'Categories', description: 'Manage your income and expense categories.' },
   { page: 'Tags', icon: 'label', title: 'Tags', description: 'Organize transactions with custom tags.' },
-  { page: 'User Management', icon: 'manage_accounts', title: 'User Management', description: 'Manage users and their permissions.', adminOnly: true },
   { page: 'Enable Banking', icon: 'sync', title: 'Enable Banking', description: 'Connect your bank accounts for auto-sync.' },
   { page: 'Data Management', icon: 'database', title: 'Data Management', description: 'Import, export, or reset your account data.' },
 ];
@@ -36,9 +35,6 @@ const Settings: React.FC<SettingsProps> = ({ setCurrentPage, user }) => {
       </header>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {settingsLinks.map(link => {
-          if (link.adminOnly && user.role !== 'Administrator') {
-            return null;
-          }
           return (
             <Card key={link.page} onClick={() => handleNavigation(link.page as Page)} className="cursor-pointer hover:shadow-lg dark:hover:bg-dark-card/60 transition-all duration-200 group">
               <div className="flex items-center justify-between">

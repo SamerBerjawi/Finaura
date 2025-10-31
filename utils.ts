@@ -170,23 +170,3 @@ export const downloadCSV = (csvString: string, filename: string) => {
         document.body.removeChild(link);
     }
 };
-
-export const getApiBaseUrl = (): string => {
-    const envValue = (import.meta as any).env?.VITE_API_BASE_URL as string | undefined;
-    if (envValue) {
-        return envValue.replace(/\/$/, '');
-    }
-
-    if (typeof window !== 'undefined') {
-        const { origin, hostname } = window.location;
-        if (hostname === 'localhost') {
-            return 'http://localhost:3230/api';
-        }
-        // This logic is for cloud-based development environments where ports are exposed as subdomains or parts of the URL.
-        const backendOrigin = origin.replace('4173', '3230');
-        return `${backendOrigin}/api`;
-    }
-
-    // Fallback for non-browser environments
-    return 'http://localhost:3230/api';
-};

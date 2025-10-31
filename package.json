@@ -13,13 +13,7 @@
     "react-dom": "^19.2.0",
     "recharts": "^3.3.0",
     "uuid": "^13.0.0",
-    "@google/genai": "^1.27.0",
-    "express": "^5.1.0",
-    "pg": "^8.16.3",
-    "dotenv": "^17.2.3",
-    "cors": "^2.8.5",
-    "bcryptjs": "^3.0.2",
-    "jsonwebtoken": "^9.0.2"
+    "@google/genai": "^1.27.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

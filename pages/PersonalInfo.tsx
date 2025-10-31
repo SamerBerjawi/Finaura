@@ -6,7 +6,7 @@ import ChangePasswordModal from '../components/ChangePasswordModal';
 
 interface PersonalInfoProps {
   user: User;
-  setUser: (user: Partial<User>) => void;
+  setUser: (email: string, updates: Partial<User>) => void;
   onChangePassword: (email: string, current: string, newPass: string) => boolean;
   setCurrentPage: (page: Page) => void;
 }
@@ -24,7 +24,7 @@ const PersonalInfo: React.FC<PersonalInfoProps> = ({ user, setUser, onChangePass
   const handle2FAToggle = () => {
     const updatedUser = { ...formData, is2FAEnabled: !formData.is2FAEnabled };
     setFormData(updatedUser);
-    setUser(updatedUser); // Save immediately
+    setUser(user.email, { is2FAEnabled: updatedUser.is2FAEnabled }); // Save immediately
     alert(`Two-Factor Authentication ${updatedUser.is2FAEnabled ? 'enabled' : 'disabled'}.`);
   };
 
@@ -45,7 +45,7 @@ const PersonalInfo: React.FC<PersonalInfoProps> = ({ user, setUser, onChangePass
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setUser(formData);
+    setUser(user.email, formData);
     alert('Profile updated successfully!');
   };
 

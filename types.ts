@@ -102,8 +102,6 @@ export interface CategorySpending {
   icon?: string;
 }
 
-// This type represents the user object on the frontend.
-// The backend might have more fields (like password_hash).
 export interface User {
   firstName: string;
   lastName: string;
@@ -115,12 +113,6 @@ export interface User {
   is2FAEnabled: boolean;
   status: 'Active' | 'Inactive';
   lastLogin: string;
-  // Fields from DB that are snake_case
-  first_name?: string;
-  last_name?: string;
-  profile_picture_url?: string;
-  is_2fa_enabled?: boolean;
-  last_login?: string;
 }
 
 

@@ -120,7 +120,7 @@ const Chatbot: React.FC<ChatbotProps> = ({ isOpen, onClose, financialData }) => 
 
   return (
     <div className="fixed bottom-24 right-6 w-full max-w-sm h-[60vh] z-50 flex flex-col">
-      <div className="bg-light-card dark:bg-dark-card rounded-xl shadow-2xl border border-light-separator dark:border-dark-separator flex flex-col h-full">
+      <div className="bg-light-card/80 dark:bg-dark-card/80 backdrop-blur-xl rounded-xl shadow-2xl border border-light-separator dark:border-dark-separator flex flex-col h-full">
         <header className="flex items-center justify-between p-4 border-b border-light-separator dark:border-dark-separator">
           <h2 className="text-lg font-semibold">Finaura AI Assistant</h2>
           <button onClick={onClose} className="p-1 rounded-full hover:bg-black/5 dark:hover:bg-white/5">

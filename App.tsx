@@ -21,7 +21,7 @@ import AccountDetail from './pages/AccountDetail';
 import Investments from './pages/Investments';
 import Tasks from './pages/Tasks';
 import Warrants from './pages/Warrants';
-import UserManagement from './pages/UserManagement';
+// UserManagement is removed
 // FIX: Import FinancialData from types.ts
 import { Page, Theme, Category, User, Transaction, Account, RecurringTransaction, WeekendAdjustment, FinancialGoal, Budget, ImportExportHistoryItem, AppPreferences, RemoteAccount, AccountType, EnableBankingSettings, InvestmentTransaction, Task, Warrant, ScraperConfig, ImportDataType, FinancialData, Currency, BillPayment, BillPaymentStatus } from './types';
 // FIX: Import Card component and BTN_PRIMARY_STYLE constant to resolve 'Cannot find name' errors.
@@ -33,44 +33,9 @@ import EnableBankingLinkAccountsModal from './components/EnableBankingLinkAccoun
 import { GoogleGenAI, FunctionDeclaration, Type } from '@google/genai';
 import ChatFab from './components/ChatFab';
 import Chatbot from './components/Chatbot';
-import { convertToEur, CONVERSION_RATES, arrayToCSV, downloadCSV, getApiBaseUrl } from './utils';
+import { convertToEur, CONVERSION_RATES, arrayToCSV, downloadCSV } from './utils';
 import { useDebounce } from './hooks/useDebounce';
 import { useAuth } from './hooks/useAuth';
-
-const API_BASE_URL = getApiBaseUrl();
-
-// This constant is now defined in useAuth, but we need a way to check for dev mode here.
-// We will get this flag from the useAuth hook.
-const DEV_MODE_BYPASS_AUTH = true; // This will be replaced by the hook's return value.
-
-
-const getBankAccountsFunctionDeclaration: FunctionDeclaration = {
-  name: 'get_bank_accounts',
-  parameters: {
-    type: Type.OBJECT,
-    description: 'Gets a list of bank accounts from the connected institution.',
-    properties: {
-      accounts: {
-        type: Type.ARRAY,
-        description: 'A list of bank accounts.',
-        items: {
-          type: Type.OBJECT,
-          properties: {
-            id: { type: Type.STRING, description: 'Unique account ID, prefixed with eb-acc-' },
-            name: { type: Type.STRING, description: 'Account name or label' },
-            balance: { type: Type.NUMBER, description: 'Current account balance' },
-            currency: { type: Type.STRING, description: 'ISO currency code (e.g., EUR, USD)' },
-            institution: { type: Type.STRING, description: 'The financial institution name' },
-            type: { type: Type.STRING, description: 'The type of account (e.g., Checking, Savings)' },
-            last4: { type: Type.STRING, description: 'The last 4 digits of the account number' },
-          },
-          required: ['id', 'name', 'balance', 'currency', 'institution', 'type', 'last4'],
-        },
-      },
-    },
-    required: ['accounts'],
-  },
-};
 
 const initialFinancialData: FinancialData = {
     accounts: [],
@@ -155,7 +120,7 @@ const EnableBankingConsent: React.FC<{ onAuthorize: () => void; onDeny: () => vo
 
 // FIX: Add export to create a named export for the App component.
 export const App: React.FC = () => {
-  const { user, isAuthenticated, isLoading: isAuthLoading, error: authError, signIn, signUp, signOut, checkAuthStatus, setError: setAuthError } = useAuth();
+  const { user, setUser, isAuthenticated, isLoading: isAuthLoading, error: authError, signIn, signUp, signOut, checkAuthStatus, setError: setAuthError, changePassword } = useAuth();
   const [authPage, setAuthPage] = useState<'signIn' | 'signUp'>('signIn');
   const [isDataLoaded, setIsDataLoaded] = useState(false);
 
@@ -243,7 +208,9 @@ export const App: React.FC = () => {
   useEffect(() => {
     const authAndLoad = async () => {
         const data = await checkAuthStatus();
-        loadAllFinancialData(data);
+        if (data) {
+          loadAllFinancialData(data);
+        }
         setIsDataLoaded(true);
     };
     authAndLoad();
@@ -366,34 +333,10 @@ export const App: React.FC = () => {
 
   const debouncedDataToSave = useDebounce(dataToSave, 1500);
 
-  // Persist data to backend on change
+  // Persist data to localStorage on change
   useEffect(() => {
-    const saveData = async () => {
-      if (DEV_MODE_BYPASS_AUTH) {
-        localStorage.setItem('finaura_dev_data', JSON.stringify(debouncedDataToSave));
-        return;
-      }
-      
-      if (isAuthenticated && user) {
-        const token = localStorage.getItem('finaura_token');
-        if (!token) return; // Don't try to save if there's no token
-        try {
-          await fetch(`${API_BASE_URL}/data`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`,
-            },
-            body: JSON.stringify(debouncedDataToSave),
-          });
-        } catch (error) {
-          console.error("Failed to save data to backend", error);
-        }
-      }
-    };
-    // Only save if data has been loaded to prevent overwriting on initial load
-    if(isDataLoaded) {
-      saveData();
+    if (isDataLoaded && isAuthenticated && user) {
+        localStorage.setItem(`finaura_data_${user.email}`, JSON.stringify(debouncedDataToSave));
     }
   }, [debouncedDataToSave, isAuthenticated, user, isDataLoaded]);
 
@@ -414,25 +357,9 @@ export const App: React.FC = () => {
 
   const handleLogout = () => {
     signOut();
-    if (!DEV_MODE_BYPASS_AUTH) {
-        loadAllFinancialData(null); // Reset all states
-        setAuthPage('signIn');
-    }
+    loadAllFinancialData(null); // Reset all states
+    setAuthPage('signIn');
   };
-
-  // User Management Handlers (These are now just wrappers for API calls)
-  const handleUpdateUser = useCallback(async (email: string, updates: Partial<User>) => {
-    // API call logic will be in UserManagement.tsx
-    // This hook is not available here, so we will manage user state in the PersonalInfo page
-    // For now, this is a placeholder. A better solution might involve a global state manager.
-  }, []);
-
-  // FIX: Removed async/Promise to match the synchronous boolean return type expected by the PersonalInfo and ChangePasswordModal components.
-  const handleChangePassword = useCallback((email: string, current: string, newPass: string): boolean => {
-    // API call logic will be in PersonalInfo.tsx or its modal
-    return true; // Placeholder
-  }, []);
-  
     const handleSaveTransaction = (
     transactionDataArray: (Omit<Transaction, 'id'> & { id?: string })[],
     transactionIdsToDelete: string[] = []
@@ -696,8 +623,6 @@ export const App: React.FC = () => {
 
   const handleResetAccount = () => {
     if (user) {
-        // This should now be an API call, but for simplicity, we keep it client-side
-        // to reset the current session state. A real reset would be on the backend.
         loadAllFinancialData(initialFinancialData);
         alert("Client-side data has been reset.");
     }
@@ -723,7 +648,7 @@ export const App: React.FC = () => {
             const data = JSON.parse(event.target?.result as string) as FinancialData;
             if (data.accounts && data.transactions) {
                 loadAllFinancialData(data);
-                alert('Data successfully restored! Changes will be saved to the database.');
+                alert('Data successfully restored!');
             } else {
                 throw new Error('Invalid backup file format.');
             }
@@ -897,19 +822,19 @@ export const App: React.FC = () => {
         case 'Schedule & Bills': return <Schedule recurringTransactions={recurringTransactions} saveRecurringTransaction={handleSaveRecurringTransaction} deleteRecurringTransaction={handleDeleteRecurringTransaction} billsAndPayments={billsAndPayments} saveBillPayment={handleSaveBillPayment} deleteBillPayment={handleDeleteBillPayment} markBillAsPaid={handleMarkBillAsPaid} accounts={accounts} incomeCategories={incomeCategories} expenseCategories={expenseCategories} />;
         case 'Categories': return <Categories incomeCategories={incomeCategories} setIncomeCategories={setIncomeCategories} expenseCategories={expenseCategories} setExpenseCategories={setExpenseCategories} setCurrentPage={setCurrentPage} />;
         case 'Tags': return <Tags setCurrentPage={setCurrentPage} />;
-        case 'Personal Info': return <PersonalInfo user={user!} setUser={(updatedUser) => handleUpdateUser(updatedUser.email, updatedUser)} onChangePassword={handleChangePassword} setCurrentPage={setCurrentPage} />;
+        case 'Personal Info': return <PersonalInfo user={user!} setUser={(updatedUser) => setUser(user!.email, updatedUser)} onChangePassword={(current, newPass) => changePassword(user!.email, current, newPass)} setCurrentPage={setCurrentPage} />;
         case 'Data Management': return <DataManagement accounts={accounts} transactions={transactions} budgets={budgets} recurringTransactions={recurringTransactions} allCategories={[...incomeCategories, ...expenseCategories]} history={importExportHistory} onPublishImport={handlePublishImport} onDeleteHistoryItem={handleDeleteHistoryItem} onDeleteImportedTransactions={handleDeleteImportedTransactions} onResetAccount={handleResetAccount} onExportAllData={handleExportAllData} onImportAllData={handleImportAllData} onExportCSV={handleExportCSV} sureApiUrl={sureApiUrl} setSureApiUrl={handleSetSureApiUrl} sureApiKey={sureApiKey} setSureApiKey={handleSetSureApiKey} onSureSync={handleSureSync} isSureSyncing={isSureSyncing} setCurrentPage={setCurrentPage} />;
         case 'Preferences': return <Preferences preferences={preferences} setPreferences={setPreferences} theme={theme} setTheme={setTheme} setCurrentPage={setCurrentPage} />;
         case 'Enable Banking': return <EnableBankingSettingsPage linkedAccounts={accounts.filter(a => a.enableBankingId)} settings={enableBankingSettings} setSettings={setEnableBankingSettings} onStartConnection={() => setConnectModalOpen(true)} onUnlinkAccount={()=>{}} onManualSync={()=>{}} setCurrentPage={setCurrentPage} />;
         case 'Investments': return <Investments investmentAccounts={accounts.filter(a => a.type === 'Investment' || a.type === 'Crypto')} cashAccounts={accounts.filter(a => a.type === 'Checking' || a.type === 'Savings')} investmentTransactions={investmentTransactions} saveInvestmentTransaction={handleSaveInvestmentTransaction} deleteInvestmentTransaction={handleDeleteInvestmentTransaction} />;
         case 'Tasks': return <Tasks tasks={tasks} saveTask={handleSaveTask} deleteTask={handleDeleteTask} />;
         case 'Warrants': return <Warrants warrants={warrants} saveWarrant={handleSaveWarrant} deleteWarrant={handleDeleteWarrant} scraperConfigs={scraperConfigs} saveScraperConfig={handleSaveScraperConfig} />;
-        case 'User Management': return <UserManagement currentUser={user!} setCurrentPage={setCurrentPage} />;
+        // User Management case is removed
         default: return <Dashboard user={user!} transactions={transactions} accounts={accounts} saveTransaction={handleSaveTransaction} incomeCategories={incomeCategories} expenseCategories={expenseCategories} />;
     }
   }
 
-  if (!isDataLoaded || isProcessingOAuth) {
+  if (isAuthLoading || !isDataLoaded || isProcessingOAuth) {
     return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-light-bg dark:bg-dark-bg">
             <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary-500"></div>

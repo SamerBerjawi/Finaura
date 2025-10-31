@@ -1,29 +1,13 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { User, FinancialData } from '../types';
-import { getApiBaseUrl } from '../utils';
 import { MOCK_INCOME_CATEGORIES, MOCK_EXPENSE_CATEGORIES } from '../constants';
 
-// --- Development Flag ---
-// Set to true to bypass the login screen and use a mock user.
-// This is for development purposes only.
-const DEV_MODE_BYPASS_AUTH = true;
-// ------------------------
+// --- User Data Structure in localStorage ---
+// key: 'finaura_users'
+// value: { [email: string]: { user: User; passwordHash: string } }
 
-const MOCK_USER: User = {
-    firstName: 'Dev',
-    lastName: 'User',
-    email: 'dev@finaura.app',
-    profilePictureUrl: 'https://i.pravatar.cc/150?u=dev@finaura.app',
-    role: 'Administrator',
-    phone: '123-456-7890',
-    address: '123 Dev Street, Codeville',
-    is2FAEnabled: false,
-    status: 'Active',
-    lastLogin: new Date().toISOString(),
-};
-
-
-const API_BASE_URL = getApiBaseUrl();
+// key: `finaura_session`
+// value: { email: string }
 
 const initialFinancialData: FinancialData = {
     accounts: [],
@@ -54,92 +38,85 @@ const initialFinancialData: FinancialData = {
     },
 };
 
+
+const getUsersFromStorage = (): Record<string, { user: User; passwordHash: string }> => {
+  try {
+    const usersJson = localStorage.getItem('finaura_users');
+    return usersJson ? JSON.parse(usersJson) : {};
+  } catch {
+    return {};
+  }
+};
+
+const saveUsersToStorage = (users: Record<string, { user: User; passwordHash: string }>) => {
+  localStorage.setItem('finaura_users', JSON.stringify(users));
+};
+
+const getFinancialDataForUser = (email: string): FinancialData => {
+    try {
+        const dataJson = localStorage.getItem(`finaura_data_${email}`);
+        return dataJson ? JSON.parse(dataJson) : initialFinancialData;
+    } catch {
+        return initialFinancialData;
+    }
+};
+
 export const useAuth = () => {
-  const [user, setUser] = useState<User | null>(DEV_MODE_BYPASS_AUTH ? MOCK_USER : null);
-  const [isAuthenticated, setIsAuthenticated] = useState(DEV_MODE_BYPASS_AUTH);
-  const [isLoading, setIsLoading] = useState(!DEV_MODE_BYPASS_AUTH);
+  const [user, setUser] = useState<User | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const processSuccessfulAuth = useCallback((token: string, userData: User, financialData: FinancialData) => {
-    localStorage.setItem('finaura_token', token);
-    const normalizedUser = {
-      ...userData,
-      firstName: userData.first_name || userData.firstName,
-      lastName: userData.last_name || userData.lastName,
-      profilePictureUrl: userData.profile_picture_url || userData.profilePictureUrl,
-      is2FAEnabled: userData.is_2fa_enabled !== undefined ? userData.is_2fa_enabled : userData.is2FAEnabled,
-    };
-    setUser(normalizedUser);
+  const processSuccessfulAuth = useCallback((userData: User): FinancialData => {
+    localStorage.setItem('finaura_session', JSON.stringify({ email: userData.email }));
+    setUser(userData);
     setIsAuthenticated(true);
-    return financialData || initialFinancialData;
+    return getFinancialDataForUser(userData.email);
   }, []);
 
   const signOut = useCallback(() => {
-    if (DEV_MODE_BYPASS_AUTH) {
-        alert("Sign out is disabled in development mode. To log out, set the 'DEV_MODE_BYPASS_AUTH' flag to false in hooks/useAuth.ts.");
-        return;
-    }
-    localStorage.removeItem('finaura_token');
+    localStorage.removeItem('finaura_session');
     setUser(null);
     setIsAuthenticated(false);
   }, []);
   
-  const checkAuthStatus = useCallback(async () => {
-    if (DEV_MODE_BYPASS_AUTH) {
-        setIsLoading(false);
-        try {
-            const item = window.localStorage.getItem('finaura_dev_data');
-            return item ? JSON.parse(item) : initialFinancialData;
-        } catch (e) {
-            console.error("Failed to load dev data from localStorage", e);
-            return initialFinancialData;
-        }
-    }
-
+  const checkAuthStatus = useCallback(async (): Promise<FinancialData | null> => {
     setIsLoading(true);
-    const token = localStorage.getItem('finaura_token');
-    if (token) {
-      try {
-        const res = await fetch(`${API_BASE_URL}/auth/me`, {
-          headers: { 'Authorization': `Bearer ${token}` },
-        });
-        if (res.ok) {
-          const { user: userData, financialData } = await res.json();
-          return processSuccessfulAuth(token, userData, financialData);
-        } else {
-          signOut();
+    try {
+      const sessionJson = localStorage.getItem('finaura_session');
+      if (sessionJson) {
+        const session = JSON.parse(sessionJson);
+        const users = getUsersFromStorage();
+        if (users[session.email]) {
+          const loadedData = processSuccessfulAuth(users[session.email].user);
+          setIsLoading(false);
+          return loadedData;
         }
-      } catch (err) {
-        console.error('Auth check failed', err);
-        signOut();
       }
+    } catch (e) {
+      console.error("Auth check failed", e);
     }
+    signOut();
     setIsLoading(false);
     return null;
   }, [processSuccessfulAuth, signOut]);
 
   const signIn = useCallback(async (email: string, password: string): Promise<FinancialData | null> => {
-    if (DEV_MODE_BYPASS_AUTH) {
-        console.log("Sign in is disabled in development mode.");
-        return Promise.resolve(initialFinancialData);
-    }
     setIsLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/signin`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-      if (res.ok) {
-        const { token, user: userData, financialData } = await res.json();
-        return processSuccessfulAuth(token, userData, financialData);
+      const users = getUsersFromStorage();
+      const userData = users[email.toLowerCase()];
+      // Use simple base64 for local "hashing" - NOT for production web apps.
+      if (userData && userData.passwordHash === btoa(password)) {
+        userData.user.lastLogin = new Date().toISOString();
+        saveUsersToStorage(users);
+        return processSuccessfulAuth(userData.user);
       } else {
-        const { message } = await res.json();
-        setError(message || 'Invalid email or password.');
+        setError('Invalid email or password.');
       }
     } catch (err) {
-      setError('Failed to sign in. Please check your connection and try again.');
+      setError('An unexpected error occurred during sign in.');
     } finally {
       setIsLoading(false);
     }
@@ -147,32 +124,64 @@ export const useAuth = () => {
   }, [processSuccessfulAuth]);
 
   const signUp = useCallback(async (newUserData: { firstName: string, lastName: string, email: string, password: string }): Promise<FinancialData | null> => {
-    if (DEV_MODE_BYPASS_AUTH) {
-        console.log("Sign up is disabled in development mode.");
-        return Promise.resolve(initialFinancialData);
-    }
     setIsLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/signup`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newUserData),
-      });
-      if (res.ok) {
-        const { token, user: userData, financialData } = await res.json();
-        return processSuccessfulAuth(token, userData, financialData);
-      } else {
-        const { message } = await res.json();
-        setError(message || 'Failed to sign up.');
-      }
+        const users = getUsersFromStorage();
+        const email = newUserData.email.toLowerCase();
+        if (users[email]) {
+            setError('An account with this email already exists.');
+            setIsLoading(false);
+            return null;
+        }
+
+        const user: User = {
+            firstName: newUserData.firstName,
+            lastName: newUserData.lastName,
+            email: email,
+            profilePictureUrl: `https://i.pravatar.cc/150?u=${email}`,
+            role: 'Administrator', // First user is always admin
+            is2FAEnabled: false,
+            status: 'Active',
+            lastLogin: new Date().toISOString(),
+        };
+
+        users[email] = {
+            user,
+            passwordHash: btoa(newUserData.password) // Simple base64 "hashing"
+        };
+        saveUsersToStorage(users);
+        
+        localStorage.setItem(`finaura_data_${email}`, JSON.stringify(initialFinancialData));
+
+        return processSuccessfulAuth(user);
     } catch (err) {
-      setError('Failed to sign up. Please check your connection and try again.');
+      setError('An unexpected error occurred during sign up.');
     } finally {
-      setIsLoading(false);
+        setIsLoading(false);
     }
     return null;
   }, [processSuccessfulAuth]);
   
-  return { user, isAuthenticated, isLoading, error, signIn, signUp, signOut, checkAuthStatus, setError };
+  const updateUser = useCallback((email: string, updates: Partial<User>) => {
+      const users = getUsersFromStorage();
+      if (users[email]) {
+          const updatedUser = { ...users[email].user, ...updates };
+          users[email].user = updatedUser;
+          saveUsersToStorage(users);
+          setUser(updatedUser); // Update active user state
+      }
+  }, []);
+  
+  const changePassword = useCallback((email: string, current: string, newPass: string): boolean => {
+      const users = getUsersFromStorage();
+      if (users[email] && users[email].passwordHash === btoa(current)) {
+          users[email].passwordHash = btoa(newPass);
+          saveUsersToStorage(users);
+          return true;
+      }
+      return false;
+  }, []);
+
+  return { user, setUser: updateUser, isAuthenticated, isLoading, error, signIn, signUp, signOut, checkAuthStatus, setError, changePassword };
 };

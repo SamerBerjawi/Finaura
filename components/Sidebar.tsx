@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { Page, Theme, User } from '../types';
 import { NAV_ITEMS, FinauraLogo, NavItem } from '../constants';
 
@@ -20,20 +20,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isSideba
     return activeParent ? activeParent.name : null;
   });
   
-  const navItems = useMemo(() => {
-    if (user.role !== 'Administrator') {
-      return NAV_ITEMS.map(item => {
-        if (item.name === 'Settings' && item.subItems) {
-          return {
-            ...item,
-            subItems: item.subItems.filter(sub => sub.name !== 'User Management')
-          };
-        }
-        return item;
-      }).filter(Boolean) as NavItem[];
-    }
-    return NAV_ITEMS;
-  }, [user.role]);
+  const navItems = NAV_ITEMS;
 
 
   const handleNavClick = (page: Page, hasSubItems?: boolean) => {
@@ -120,7 +107,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isSideba
         className={`fixed inset-0 z-30 bg-black/30 transition-opacity md:hidden ${isSidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} 
         onClick={() => setSidebarOpen(false)}
       ></div>
-      <aside className={`fixed top-0 left-0 bottom-0 z-40 bg-light-card dark:bg-dark-card flex flex-col transition-all duration-300 ease-in-out md:relative md:translate-x-0 ${isSidebarOpen ? 'translate-x-0 w-64' : '-translate-x-full w-64'} ${isSidebarCollapsed ? 'md:w-20' : 'md:w-64'} border-r border-light-separator dark:border-dark-separator`}>
+      <aside className={`fixed top-0 left-0 bottom-0 z-40 bg-light-card/80 dark:bg-dark-card/80 backdrop-blur-xl flex flex-col transition-all duration-300 ease-in-out md:relative md:translate-x-0 ${isSidebarOpen ? 'translate-x-0 w-64' : '-translate-x-full w-64'} ${isSidebarCollapsed ? 'md:w-20' : 'md:w-64'} border-r border-light-separator dark:border-dark-separator`}>
         <div className="flex items-center justify-center h-20 flex-shrink-0">
             <div className={`flex items-center transition-all duration-300 ${isSidebarCollapsed ? 'md:gap-0' : 'gap-3'}`}>
                 <FinauraLogo theme={theme} />

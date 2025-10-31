@@ -191,10 +191,6 @@ const Warrants: React.FC<WarrantsProps> = ({ warrants, saveWarrant, deleteWarran
                 <Card><p className="text-sm text-light-text-secondary dark:text-dark-text-secondary">Holdings</p><p className="text-2xl font-bold">{holdings.length}</p></Card>
             </div>
             
-             <div className="p-3 text-center bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-200 rounded-lg text-sm">
-                <span className="font-semibold">Note:</span> Price scraping is simulated for demonstration and does not reflect live market data. Configure scrapers to assign simulated prices to your warrants.
-            </div>
-
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
                 <div className="lg:col-span-2">
                     <Card className="h-full">

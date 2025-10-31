@@ -1,4 +1,6 @@
-import express from 'express';
+// FIX: Use default import for express to avoid type conflicts.
+// FIX: Import Request and Response types directly to avoid type conflicts.
+import express, { Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { initializeDatabase } from './database';
@@ -20,7 +22,8 @@ app.use('/api/data', dataRouter);
 app.use('/api/users', usersRouter);
 
 // FIX: Explicitly type req and res with express.Request and express.Response to resolve overload and property-not-found errors.
-app.get('/', (req: express.Request, res: express.Response) => {
+// FIX: Use directly imported Request and Response types.
+app.get('/', (req: Request, res: Response) => {
   res.send('Finaura Backend is running!');
 });
 

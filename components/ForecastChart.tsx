@@ -33,6 +33,12 @@ const CustomTooltip = ({ active, payload, label }: any) => {
     return null;
 };
 
+const yAxisTickFormatter = (value: number) => {
+    if (Math.abs(value) >= 1000000) return `€${(value / 1000000).toFixed(1)}M`;
+    if (Math.abs(value) >= 1000) return `€${(value / 1000).toFixed(0)}K`;
+    return `€${value}`;
+};
+
 const ForecastChart: React.FC<ForecastChartProps> = ({ data, oneTimeGoals, lowestPoint }) => {
   if (!data || data.length === 0) {
     return <div className="flex items-center justify-center h-full text-light-text-secondary dark:text-dark-text-secondary">Select accounts and a period to generate a forecast.</div>;
@@ -61,7 +67,7 @@ const ForecastChart: React.FC<ForecastChartProps> = ({ data, oneTimeGoals, lowes
             stroke="currentColor" 
             opacity={0.6} 
             fontSize={12} 
-            tickFormatter={(value) => formatCurrency(value as number, 'EUR').replace(/\.00$/, '').replace('€', '€ ')}
+            tickFormatter={yAxisTickFormatter}
             domain={['dataMin', 'dataMax']}
             width={90}
           />

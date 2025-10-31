@@ -1,15 +1,19 @@
-// FIX: Changed express import to a namespace to avoid type conflicts with global DOM types.
-import * as express from 'express';
+// FIX: Changed express import to use default import to avoid type conflicts with global DOM types.
+// FIX: Import Request, Response, and NextFunction types directly from express to resolve type conflicts.
+import express, { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 // FIX: Extended express.Request to ensure correct type properties.
-export interface AuthRequest extends express.Request {
+// FIX: Extend the imported Request type.
+export interface AuthRequest extends Request {
     user?: any;
 }
 
-export const authMiddleware = (req: AuthRequest, res: express.Response, next: express.NextFunction) => {
+// FIX: Use express.Response for route handler to resolve type errors.
+// FIX: Use directly imported Response and AuthRequest types.
+export const authMiddleware = (req: AuthRequest, res: Response, next: NextFunction) => {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return res.status(401).json({ message: 'Access denied. No token provided.' });
@@ -25,7 +29,9 @@ export const authMiddleware = (req: AuthRequest, res: express.Response, next: ex
     }
 };
 
-export const adminMiddleware = (req: AuthRequest, res: express.Response, next: express.NextFunction) => {
+// FIX: Use express.Response for route handler to resolve type errors.
+// FIX: Use directly imported Response and AuthRequest types.
+export const adminMiddleware = (req: AuthRequest, res: Response, next: NextFunction) => {
     if (req.user.role !== 'Administrator') {
         return res.status(403).json({ message: 'Access denied. Administrator privileges required.' });
     }

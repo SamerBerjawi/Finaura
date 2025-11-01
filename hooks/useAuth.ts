@@ -9,6 +9,34 @@ interface AuthResponse {
 
 const TOKEN_STORAGE_KEY = 'finaura_auth_token';
 
+const safeLocalStorage = {
+  getItem: (key: string): string | null => {
+    if (typeof window === 'undefined') return null;
+    try {
+      return window.localStorage.getItem(key);
+    } catch (error) {
+      console.warn(`Failed to read "${key}" from localStorage.`, error);
+      return null;
+    }
+  },
+  setItem: (key: string, value: string) => {
+    if (typeof window === 'undefined') return;
+    try {
+      window.localStorage.setItem(key, value);
+    } catch (error) {
+      console.warn(`Failed to write "${key}" to localStorage.`, error);
+    }
+  },
+  removeItem: (key: string) => {
+    if (typeof window === 'undefined') return;
+    try {
+      window.localStorage.removeItem(key);
+    } catch (error) {
+      console.warn(`Failed to remove "${key}" from localStorage.`, error);
+    }
+  },
+};
+
 const mapApiUserToUser = (apiUser: any): User => ({
   firstName: apiUser.firstName ?? '',
   lastName: apiUser.lastName ?? '',
@@ -22,15 +50,13 @@ const mapApiUserToUser = (apiUser: any): User => ({
   lastLogin: apiUser.lastLogin ?? new Date().toISOString(),
 });
 
-const getStoredToken = () =>
-  typeof window !== 'undefined' ? localStorage.getItem(TOKEN_STORAGE_KEY) : null;
+const getStoredToken = () => safeLocalStorage.getItem(TOKEN_STORAGE_KEY);
 
 const persistToken = (newToken: string | null) => {
-  if (typeof window === 'undefined') return;
   if (newToken) {
-    localStorage.setItem(TOKEN_STORAGE_KEY, newToken);
+    safeLocalStorage.setItem(TOKEN_STORAGE_KEY, newToken);
   } else {
-    localStorage.removeItem(TOKEN_STORAGE_KEY);
+    safeLocalStorage.removeItem(TOKEN_STORAGE_KEY);
   }
 };
 

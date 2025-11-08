@@ -140,7 +140,7 @@ const AccountRow: React.FC<AccountRowProps> = ({ account, transactions, onClick,
                       {account.name}
                       {account.isPrimary && <span className="material-symbols-outlined text-yellow-500 text-base" title="Primary Account">star</span>}
                     </p>
-                    <div className="flex items-center gap-1 text-sm text-light-text-secondary dark:text-dark-text-secondary truncate">
+                    <div className="flex items-center gap-1 text-sm text-light-text-secondary dark:text-dark-text-secondary">
                        {renderSecondaryDetails()}
                        {account.symbol && <span className="font-mono bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 rounded text-xs ml-2">{account.symbol}</span>}
                     </div>
@@ -156,7 +156,7 @@ const AccountRow: React.FC<AccountRowProps> = ({ account, transactions, onClick,
                         </LineChart>
                     </ResponsiveContainer>
                 </div>
-                <div className="text-right shrink-0 w-32">
+                <div className="text-right shrink-0 w-40">
                     <p className={`font-bold text-lg ${isAsset ? 'text-light-text dark:text-dark-text' : 'text-red-500'}`}>
                         {formatCurrency(convertToEur(displayBalance, account.currency), 'EUR')}
                     </p>

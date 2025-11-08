@@ -12,7 +12,7 @@ const PRIORITY_COLORS: Record<TaskPriority, string> = {
     'Medium': 'bg-yellow-400',
     'Low': 'bg-blue-400',
 };
-const NO_TASK_COLOR = 'bg-gray-200 dark:bg-gray-800';
+const NO_TASK_COLOR = 'bg-gray-200 dark:bg-gray-700';
 const PRIORITY_ORDER: Record<TaskPriority, number> = { 'High': 3, 'Medium': 2, 'Low': 1 };
 
 const TasksHeatmap: React.FC<TasksHeatmapProps> = ({ tasks }) => {

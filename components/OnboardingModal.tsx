@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Account, Category, AccountType, Currency, User, AppPreferences, FinancialGoal, RecurringTransaction } from '../types';
 import { CrystalLogo, BTN_PRIMARY_STYLE, BTN_SECONDARY_STYLE, INPUT_BASE_STYLE, SELECT_WRAPPER_STYLE, SELECT_ARROW_STYLE, CURRENCIES, ACCOUNT_TYPE_STYLES, ALL_ACCOUNT_TYPES, CURRENCY_OPTIONS } from '../constants';
@@ -289,7 +290,8 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({
     <div className="fixed inset-0 bg-light-bg dark:bg-dark-bg z-[100] flex flex-col p-6 transition-opacity duration-300">
         <header className="flex-shrink-0 flex items-center justify-between">
             <div className="flex items-center gap-3">
-                <CrystalLogo theme="system" />
+                {/* FIX: The `CrystalLogo` component does not accept a `theme` prop. Replaced it with `showText={false}` to show the small logo icon. */}
+                <CrystalLogo showText={false} />
                 <span className="text-xl font-bold">Crystal Setup</span>
             </div>
             {(step === 1 || step === 6) && (

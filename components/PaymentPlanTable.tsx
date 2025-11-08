@@ -55,22 +55,19 @@ const PaymentPlanTable: React.FC<PaymentPlanTableProps> = ({ account, transactio
         const principal = editFormData.principal;
         const interest = editFormData.interest;
 
-        if (lastEditedField === 'total' && total !== undefined && interest !== undefined) {
-            const newPrincipal = parseFloat((total - interest).toFixed(2));
-            setEditFormData(prev => ({ ...prev, principal: newPrincipal }));
-        } else if (lastEditedField === 'principal' && total !== undefined && principal !== undefined) {
-            const newInterest = parseFloat((total - principal).toFixed(2));
-            setEditFormData(prev => ({ ...prev, interest: newInterest }));
-        } else if (lastEditedField === 'interest' && total !== undefined && interest !== undefined) {
-            const newPrincipal = parseFloat((total - interest).toFixed(2));
-            setEditFormData(prev => ({ ...prev, principal: newPrincipal }));
-        } else if ((lastEditedField === 'principal' || lastEditedField === 'interest') && principal !== undefined && interest !== undefined) {
-            const newTotal = parseFloat((principal + interest).toFixed(2));
-            setEditFormData(prev => ({ ...prev, totalPayment: newTotal }));
+        if (lastEditedField === 'total') {
+            if (total !== undefined && interest !== undefined) {
+                const newPrincipal = total - interest;
+                setEditFormData(prev => ({ ...prev, principal: parseFloat(newPrincipal.toFixed(2)) }));
+            }
+        } else if (lastEditedField === 'principal' || lastEditedField === 'interest') {
+            if (principal !== undefined && interest !== undefined) {
+                const newTotal = principal + interest;
+                setEditFormData(prev => ({ ...prev, totalPayment: parseFloat(newTotal.toFixed(2)) }));
+            }
         }
     }, [editFormData.totalPayment, editFormData.principal, editFormData.interest, lastEditedField]);
 
-    // FIX: Map 'totalPayment' to 'total' for the state update to match the expected type.
     const handleEditFormChange = (field: 'totalPayment' | 'principal' | 'interest', value: string) => {
         setLastEditedField(field === 'totalPayment' ? 'total' : field);
         setEditFormData(prev => ({ ...prev, [field]: parseFloat(value) || 0 }));

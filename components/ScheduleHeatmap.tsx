@@ -7,8 +7,8 @@ import { RecurringTransaction } from '../types';
 const INCOME_COLOR = 'bg-green-500';
 const EXPENSE_COLOR = 'bg-red-500';
 const MIXED_COLOR = 'bg-purple-500';
-const NO_ACTIVITY_COLOR = 'bg-gray-200 dark:bg-gray-800';
-const TRANSFER_COLOR = 'bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600';
+const NO_ACTIVITY_COLOR = 'bg-gray-200 dark:bg-gray-700';
+const TRANSFER_COLOR = 'bg-gray-100 dark:bg-gray-900 border border-gray-300 dark:border-gray-600';
 
 
 // FIX: Define ScheduleHeatmapProps interface to resolve 'Cannot find name' error.

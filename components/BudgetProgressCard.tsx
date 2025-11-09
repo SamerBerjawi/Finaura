@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Category } from '../types';
 import { formatCurrency } from '../utils';
@@ -15,15 +16,22 @@ const BudgetProgressCard: React.FC<BudgetProgressCardProps> = ({ category, budge
   const progress = budgeted > 0 ? (spent / budgeted) * 100 : 0;
 
   let progressBarColor = 'bg-primary-500';
-  if (progress > 100) progressBarColor = 'bg-red-500';
-  else if (progress > 80) progressBarColor = 'bg-yellow-500';
+  if (progress > 100) {
+    progressBarColor = 'bg-red-500';
+  } else if (progress > 80) {
+    progressBarColor = 'bg-yellow-500';
+  }
 
   let remainingColor = 'text-green-600 dark:text-green-400';
-  if (remaining < 0) remainingColor = 'text-red-600 dark:text-red-400';
-  else if (remaining < budgeted * 0.2) remainingColor = 'text-yellow-600 dark:text-yellow-400';
+  if (remaining < 0) {
+    remainingColor = 'text-red-600 dark:text-red-400';
+  } else if (remaining < budgeted * 0.2) {
+    remainingColor = 'text-yellow-600 dark:text-yellow-400';
+  }
 
   return (
     <Card className="flex flex-col gap-4 group transition-transform duration-200 hover:-translate-y-1">
+      {/* Header */}
       <div className="flex justify-between items-start">
         <div className="flex items-center gap-3">
           <div className="flex-shrink-0 h-10 w-10 rounded-full bg-light-bg dark:bg-dark-bg shadow-neu-inset-light dark:shadow-neu-inset-dark flex items-center justify-center">
@@ -37,27 +45,29 @@ const BudgetProgressCard: React.FC<BudgetProgressCardProps> = ({ category, budge
               {category.icon || 'category'}
             </span>
           </div>
-          <div>
-            <h4 className="font-semibold text-lg text-light-text dark:text-dark-text">{category.name}</h4>
-            <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary">
-              {formatCurrency(spent, 'EUR')} spent
-            </p>
-          </div>
+          <h4 className="font-semibold text-lg text-light-text dark:text-dark-text">{category.name}</h4>
         </div>
         <button onClick={onEdit} className="p-2 text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/10 dark:hover:bg-white/10 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
           <span className="material-symbols-outlined text-base">edit</span>
         </button>
       </div>
+      
+      {/* Progress Bar and Amounts */}
       <div>
-        <div className="flex justify-between text-base mb-1">
-          <span className="font-medium text-light-text dark:text-dark-text">{formatCurrency(budgeted, 'EUR')} Budget</span>
-          <span className={`font-semibold ${remainingColor}`}>{formatCurrency(remaining, 'EUR')} {remaining >= 0 ? 'Left' : 'Over'}</span>
-        </div>
-        <div className="w-full bg-light-bg dark:bg-dark-bg rounded-full h-2.5 shadow-neu-inset-light dark:shadow-neu-inset-dark">
+        <div className="w-full bg-light-bg dark:bg-dark-bg rounded-full h-3 shadow-neu-inset-light dark:shadow-neu-inset-dark">
           <div
-            className={`${progressBarColor} h-2.5 rounded-full transition-all duration-500`}
+            className={`${progressBarColor} h-3 rounded-full transition-all duration-500`}
             style={{ width: `${Math.min(progress, 100)}%` }}
           ></div>
+        </div>
+        <div className="flex justify-between text-sm mt-2">
+            <div>
+                <span className="font-semibold text-light-text dark:text-dark-text">{formatCurrency(spent, 'EUR')}</span>
+                <span className="text-light-text-secondary dark:text-dark-text-secondary"> of {formatCurrency(budgeted, 'EUR')}</span>
+            </div>
+            <span className={`font-semibold ${remainingColor}`}>
+                {formatCurrency(remaining, 'EUR')} {remaining >= 0 ? 'left' : 'over'}
+            </span>
         </div>
       </div>
     </Card>

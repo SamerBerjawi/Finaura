@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { Budget, Category, Transaction, Account, BudgetSuggestion } from '../types';
 import { BTN_PRIMARY_STYLE, BTN_SECONDARY_STYLE, LIQUID_ACCOUNT_TYPES } from '../constants';
@@ -248,40 +249,43 @@ const Budgeting: React.FC<BudgetingProps> = ({ budgets, transactions, expenseCat
       </header>
 
       <Card>
-        <div className="flex justify-between items-center mb-4">
-          <button onClick={() => handleMonthChange(-1)} className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/5"><span className="material-symbols-outlined">chevron_left</span></button>
-          <h3 className="text-xl font-semibold text-center">{monthName}</h3>
-          <button onClick={() => handleMonthChange(1)} className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/5"><span className="material-symbols-outlined">chevron_right</span></button>
+        <div className="flex justify-between items-center mb-6">
+            <div className="flex items-center gap-2">
+                <button onClick={() => handleMonthChange(-1)} className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/5"><span className="material-symbols-outlined">chevron_left</span></button>
+                <h3 className="text-xl font-semibold text-center">{monthName}</h3>
+                <button onClick={() => handleMonthChange(1)} className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/5"><span className="material-symbols-outlined">chevron_right</span></button>
+            </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
-          <div>
-            <p className="text-base text-light-text-secondary dark:text-dark-text-secondary">Total Budgeted</p>
-            <p className="text-2xl font-bold">{formatCurrency(totalBudgeted, 'EUR')}</p>
-          </div>
-          <div>
-            <p className="text-base text-light-text-secondary dark:text-dark-text-secondary">Total Spent</p>
-            <p className="text-2xl font-bold">{formatCurrency(totalSpent, 'EUR')}</p>
-          </div>
-          <div>
-            <p className="text-base text-light-text-secondary dark:text-dark-text-secondary">Remaining</p>
-            <p className={`text-2xl font-bold ${totalRemaining >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-              {formatCurrency(totalRemaining, 'EUR')}
-            </p>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+            <div className="text-center md:text-left">
+                <p className="text-base text-light-text-secondary dark:text-dark-text-secondary">Amount Remaining this month</p>
+                <p className={`text-5xl font-bold ${totalRemaining >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                    {formatCurrency(totalRemaining, 'EUR')}
+                </p>
+            </div>
+            <div className="space-y-2">
+                <div className="flex justify-between text-lg">
+                    <span className="text-light-text-secondary dark:text-dark-text-secondary">Spent</span>
+                    <span className="font-semibold">{formatCurrency(totalSpent, 'EUR')}</span>
+                </div>
+                <div className="flex justify-between text-lg">
+                    <span className="text-light-text-secondary dark:text-dark-text-secondary">Budgeted</span>
+                    <span className="font-semibold">{formatCurrency(totalBudgeted, 'EUR')}</span>
+                </div>
+            </div>
         </div>
-        <div className="mt-4">
-          <div className="flex justify-between text-sm mb-1">
-            <span className="font-medium text-light-text-secondary dark:text-dark-text-secondary">Overall Progress</span>
-            <span className="font-semibold text-light-text dark:text-dark-text">{overallProgress.toFixed(1)}%</span>
-          </div>
-          <div className="w-full bg-light-bg dark:bg-dark-bg rounded-full h-3 shadow-neu-inset-light dark:shadow-neu-inset-dark">
-            <div
-              className={`h-3 rounded-full transition-all duration-500 ${overallProgressBarColor}`}
-              style={{ width: `${Math.min(overallProgress, 100)}%` }}
-            ></div>
-          </div>
+        <div className="mt-6">
+            <div className="w-full bg-light-bg dark:bg-dark-bg rounded-full h-4 shadow-neu-inset-light dark:shadow-neu-inset-dark">
+                <div
+                    className={`h-4 rounded-full transition-all duration-500 ${overallProgressBarColor}`}
+                    style={{ width: `${Math.min(overallProgress, 100)}%` }}
+                ></div>
+            </div>
+            <div className="flex justify-end text-sm mt-2">
+                <span className="font-semibold text-light-text-secondary dark:text-dark-text-secondary">{overallProgress.toFixed(0)}% of budget spent</span>
+            </div>
         </div>
-      </Card>
+    </Card>
 
       <h3 className="text-xl font-semibold text-light-text dark:text-dark-text">Category Breakdown</h3>
       

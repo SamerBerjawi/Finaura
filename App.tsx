@@ -26,7 +26,7 @@ import { Documentation } from './pages/Documentation';
 // UserManagement is removed
 // FIX: Import FinancialData from types.ts
 // FIX: Add `Tag` to the import from `types.ts`.
-import { Page, Theme, Category, User, Transaction, Account, RecurringTransaction, WeekendAdjustment, FinancialGoal, Budget, ImportExportHistoryItem, AppPreferences, AccountType, InvestmentTransaction, Task, Warrant, ScraperConfig, ImportDataType, FinancialData, Currency, BillPayment, BillPaymentStatus, Duration, InvestmentSubType, Tag } from './types';
+import { Page, Theme, Category, User, Transaction, Account, RecurringTransaction, RecurringTransactionOverride, WeekendAdjustment, FinancialGoal, Budget, ImportExportHistoryItem, AppPreferences, AccountType, InvestmentTransaction, Task, Warrant, ScraperConfig, ImportDataType, FinancialData, Currency, BillPayment, BillPaymentStatus, Duration, InvestmentSubType, Tag } from './types';
 // FIX: Import Card component and BTN_PRIMARY_STYLE constant to resolve 'Cannot find name' errors.
 import { MOCK_INCOME_CATEGORIES, MOCK_EXPENSE_CATEGORIES, BTN_PRIMARY_STYLE, BTN_SECONDARY_STYLE, LIQUID_ACCOUNT_TYPES } from './constants';
 import Card from './components/Card';
@@ -45,6 +45,7 @@ const initialFinancialData: FinancialData = {
     transactions: [],
     investmentTransactions: [],
     recurringTransactions: [],
+    recurringTransactionOverrides: [],
     financialGoals: [],
     budgets: [],
     tasks: [],
@@ -123,6 +124,7 @@ export const App: React.FC = () => {
   const [investmentTransactions, setInvestmentTransactions] = useState<InvestmentTransaction[]>(initialFinancialData.investmentTransactions);
   const [accounts, setAccounts] = useState<Account[]>(initialFinancialData.accounts);
   const [recurringTransactions, setRecurringTransactions] = useState<RecurringTransaction[]>(initialFinancialData.recurringTransactions);
+  const [recurringTransactionOverrides, setRecurringTransactionOverrides] = useState<RecurringTransactionOverride[]>(initialFinancialData.recurringTransactionOverrides || []);
   const [financialGoals, setFinancialGoals] = useState<FinancialGoal[]>(initialFinancialData.financialGoals);
   const [budgets, setBudgets] = useState<Budget[]>(initialFinancialData.budgets);
   const [tasks, setTasks] = useState<Task[]>(initialFinancialData.tasks);
@@ -298,6 +300,7 @@ export const App: React.FC = () => {
     setTransactions(dataToLoad.transactions || []);
     setInvestmentTransactions(dataToLoad.investmentTransactions || []);
     setRecurringTransactions(dataToLoad.recurringTransactions || []);
+    setRecurringTransactionOverrides(dataToLoad.recurringTransactionOverrides || []);
     setFinancialGoals(dataToLoad.financialGoals || []);
     setBudgets(dataToLoad.budgets || []);
     setTasks(dataToLoad.tasks || []);
@@ -370,11 +373,11 @@ export const App: React.FC = () => {
 
   const dataToSave: FinancialData = useMemo(() => ({
     accounts, transactions, investmentTransactions, recurringTransactions,
-    financialGoals, budgets, tasks, warrants, scraperConfigs, importExportHistory, incomeCategories,
+    recurringTransactionOverrides, financialGoals, budgets, tasks, warrants, scraperConfigs, importExportHistory, incomeCategories,
     expenseCategories, preferences, billsAndPayments, accountOrder, tags,
   }), [
     accounts, transactions, investmentTransactions,
-    recurringTransactions, financialGoals, budgets, tasks, warrants, scraperConfigs, importExportHistory,
+    recurringTransactions, recurringTransactionOverrides, financialGoals, budgets, tasks, warrants, scraperConfigs, importExportHistory,
     incomeCategories, expenseCategories, preferences, billsAndPayments, accountOrder, tags,
   ]);
 
@@ -677,6 +680,24 @@ export const App: React.FC = () => {
   const handleDeleteRecurringTransaction = (id: string) => {
     setRecurringTransactions(prev => prev.filter(rt => rt.id !== id));
   };
+
+  const handleSaveRecurringOverride = (override: RecurringTransactionOverride) => {
+    setRecurringTransactionOverrides(prev => {
+      const existingIndex = prev.findIndex(o => o.recurringTransactionId === override.recurringTransactionId && o.originalDate === override.originalDate);
+      if (existingIndex > -1) {
+        const newOverrides = [...prev];
+        newOverrides[existingIndex] = { ...newOverrides[existingIndex], ...override };
+        return newOverrides;
+      }
+      return [...prev, override];
+    });
+  };
+
+  const handleDeleteRecurringOverride = (recurringTransactionId: string, originalDate: string) => {
+    setRecurringTransactionOverrides(prev => 
+      prev.filter(o => !(o.recurringTransactionId === recurringTransactionId && o.originalDate === originalDate))
+    );
+  };
   
   const handleSaveFinancialGoal = (goalData: Omit<FinancialGoal, 'id'> & { id?: string }) => {
     if (goalData.id) {
@@ -959,7 +980,7 @@ export const App: React.FC = () => {
       case 'Accounts':
         return <Accounts accounts={accounts} transactions={transactions} saveAccount={handleSaveAccount} deleteAccount={handleDeleteAccount} setCurrentPage={setCurrentPage} setAccountFilter={setAccountFilter} setViewingAccountId={setViewingAccountId} saveTransaction={handleSaveTransaction} accountOrder={accountOrder} setAccountOrder={setAccountOrder} sortBy={accountsSortBy} setSortBy={setAccountsSortBy} />;
       case 'Transactions':
-        return <Transactions transactions={transactions} saveTransaction={handleSaveTransaction} deleteTransactions={handleDeleteTransactions} accounts={accounts} accountFilter={accountFilter} setAccountFilter={setAccountFilter} incomeCategories={incomeCategories} expenseCategories={expenseCategories} tags={tags} tagFilter={tagFilter} setTagFilter={setTagFilter} />;
+        return <Transactions transactions={transactions} saveTransaction={handleSaveTransaction} deleteTransactions={handleDeleteTransactions} accounts={accounts} accountFilter={accountFilter} setAccountFilter={setAccountFilter} incomeCategories={incomeCategories} expenseCategories={expenseCategories} tags={tags} tagFilter={tagFilter} setTagFilter={setTagFilter} saveRecurringTransaction={handleSaveRecurringTransaction} />;
       case 'Budget':
         return <Budgeting budgets={budgets} transactions={transactions} expenseCategories={expenseCategories} saveBudget={handleSaveBudget} deleteBudget={handleDeleteBudget} accounts={accounts} />;
       case 'Forecasting':
@@ -967,7 +988,7 @@ export const App: React.FC = () => {
       case 'Settings':
         return <Settings setCurrentPage={setCurrentPage} user={currentUser!} />;
       case 'Schedule & Bills':
-        return <Schedule recurringTransactions={recurringTransactions} saveRecurringTransaction={handleSaveRecurringTransaction} deleteRecurringTransaction={handleDeleteRecurringTransaction} billsAndPayments={billsAndPayments} saveBillPayment={handleSaveBillPayment} deleteBillPayment={handleDeleteBillPayment} markBillAsPaid={handleMarkBillAsPaid} accounts={accounts} incomeCategories={incomeCategories} expenseCategories={expenseCategories} />;
+        return <Schedule recurringTransactions={recurringTransactions} saveRecurringTransaction={handleSaveRecurringTransaction} deleteRecurringTransaction={handleDeleteRecurringTransaction} billsAndPayments={billsAndPayments} saveBillPayment={handleSaveBillPayment} deleteBillPayment={handleDeleteBillPayment} markBillAsPaid={handleMarkBillAsPaid} accounts={accounts} incomeCategories={incomeCategories} expenseCategories={expenseCategories} recurringTransactionOverrides={recurringTransactionOverrides} saveRecurringOverride={handleSaveRecurringOverride} deleteRecurringOverride={handleDeleteRecurringOverride} saveTransaction={handleSaveTransaction} tags={tags} />;
       case 'Categories':
         return <Categories incomeCategories={incomeCategories} setIncomeCategories={setIncomeCategories} expenseCategories={expenseCategories} setExpenseCategories={setExpenseCategories} setCurrentPage={setCurrentPage} />;
       case 'Tags':
@@ -1004,7 +1025,7 @@ export const App: React.FC = () => {
       <div className="flex items-center justify-center min-h-screen bg-light-bg dark:bg-dark-bg">
         <svg className="animate-spin h-10 w-10 text-primary-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 * 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
         </svg>
       </div>
     );

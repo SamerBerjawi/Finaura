@@ -29,7 +29,7 @@ const Modal: React.FC<ModalProps> = ({ children, onClose, title, zIndexClass = '
       onClick={handleClose}
     >
       <div 
-        className={`bg-light-card dark:bg-dark-card rounded-xl shadow-modal w-full max-w-lg border border-light-separator/50 dark:border-dark-separator/50 transition-all duration-300 ease-in-out ${isVisible ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}
+        className={`bg-light-card dark:bg-dark-card rounded-xl shadow-modal w-full max-w-lg transition-all duration-300 ease-in-out ${isVisible ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}
         onClick={handleContentClick}
       >
         <header className="flex items-center justify-between p-4 border-b border-light-separator dark:border-dark-separator">

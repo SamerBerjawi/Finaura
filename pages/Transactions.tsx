@@ -1,13 +1,13 @@
-
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { INPUT_BASE_STYLE, SELECT_WRAPPER_STYLE, SELECT_ARROW_STYLE, BTN_PRIMARY_STYLE, BTN_SECONDARY_STYLE, SELECT_STYLE } from '../constants';
-import { Transaction, Category, Account, DisplayTransaction, Tag } from '../types';
+import { Transaction, Category, Account, DisplayTransaction, Tag, RecurringTransaction } from '../types';
 import Card from '../components/Card';
 import { formatCurrency, fuzzySearch, convertToEur, arrayToCSV, downloadCSV } from '../utils';
 import AddTransactionModal from '../components/AddTransactionModal';
 import BulkCategorizeModal from '../components/BulkCategorizeModal';
 import BulkEditTransactionsModal from '../components/BulkEditTransactionsModal';
 import Modal from '../components/Modal';
+import RecurringTransactionModal from '../components/RecurringTransactionModal';
 
 interface TransactionsProps {
   transactions: Transaction[];
@@ -21,9 +21,10 @@ interface TransactionsProps {
   tags: Tag[];
   tagFilter: string | null;
   setTagFilter: (tagId: string | null) => void;
+  saveRecurringTransaction: (recurringData: Omit<RecurringTransaction, 'id'> & { id?: string }) => void;
 }
 
-const Transactions: React.FC<TransactionsProps> = ({ transactions, saveTransaction, deleteTransactions, accounts, accountFilter, setAccountFilter, incomeCategories, expenseCategories, tags, tagFilter, setTagFilter }) => {
+const Transactions: React.FC<TransactionsProps> = ({ transactions, saveTransaction, deleteTransactions, accounts, accountFilter, setAccountFilter, incomeCategories, expenseCategories, tags, tagFilter, setTagFilter, saveRecurringTransaction }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('date-desc');
   const [typeFilter, setTypeFilter] = useState<'all' | 'income' | 'expense' | 'transfer'>('all');
@@ -36,6 +37,8 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, saveTransacti
   const [isBulkEditModalOpen, setBulkEditModalOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  const [isRecurringModalOpen, setIsRecurringModalOpen] = useState(false);
+  const [transactionToMakeRecurring, setTransactionToMakeRecurring] = useState<RecurringTransaction | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -328,6 +331,54 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, saveTransacti
     setTransactionModalOpen(false);
     setEditingTransaction(null);
   };
+  
+  const handleMakeRecurring = () => {
+    if (selectedIds.size !== 1) return;
+
+    const selectedId = Array.from(selectedIds)[0];
+    
+    // Find the full transaction object from the display list first, then find original if needed.
+    const displayTx = displayTransactions.find(tx => tx.id === selectedId);
+    if (!displayTx) return;
+
+    let transaction: Transaction | undefined;
+    let toAccountId: string | undefined;
+    let type: 'income' | 'expense' | 'transfer';
+
+    if (displayTx.isTransfer) {
+        const transferId = displayTx.transferId;
+        const expensePart = transactions.find(t => t.transferId === transferId && t.type === 'expense');
+        const incomePart = transactions.find(t => t.transferId === transferId && t.type === 'income');
+        
+        if (!expensePart || !incomePart) return;
+        
+        transaction = expensePart; // Use expense part as base
+        toAccountId = incomePart.accountId;
+        type = 'transfer';
+    } else {
+        transaction = transactions.find(t => t.id === displayTx.id);
+        if (!transaction) return;
+        type = transaction.type;
+    }
+
+    const initialRecurringData: RecurringTransaction = {
+        id: '', // No ID, so modal knows it's a new entry
+        accountId: transaction.accountId,
+        toAccountId: toAccountId,
+        description: transaction.description,
+        amount: Math.abs(transaction.amount),
+        category: transaction.category,
+        type: type,
+        currency: transaction.currency,
+        frequency: 'monthly',
+        startDate: new Date().toISOString().split('T')[0],
+        nextDueDate: new Date().toISOString().split('T')[0],
+        weekendAdjustment: 'on',
+    };
+
+    setTransactionToMakeRecurring(initialRecurringData);
+    setIsRecurringModalOpen(true);
+  };
 
   const handleExport = () => {
     if (filteredTransactions.length === 0) {
@@ -380,6 +431,20 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, saveTransacti
           transactionToEdit={editingTransaction}
           transactions={transactions}
           tags={tags}
+        />
+      )}
+      {isRecurringModalOpen && (
+        <RecurringTransactionModal
+            onClose={() => setIsRecurringModalOpen(false)}
+            onSave={(data) => {
+                saveRecurringTransaction(data);
+                setIsRecurringModalOpen(false);
+                setSelectedIds(new Set()); // Clear selection
+            }}
+            accounts={accounts}
+            incomeCategories={incomeCategories}
+            expenseCategories={expenseCategories}
+            recurringTransactionToEdit={transactionToMakeRecurring}
         />
       )}
       {isCategorizeModalOpen && (
@@ -447,17 +512,16 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, saveTransacti
 
       <header className="flex justify-between items-start">
         <div>
-            <h1 className="text-3xl font-bold text-light-text dark:text-dark-text">Transaction history</h1>
-            <p className="text-light-text-secondary dark:text-dark-text-secondary mt-1">View your team's trades and transactions.</p>
+            <h1 className="text-3xl font-bold text-light-text dark:text-dark-text">Transactions</h1>
+            <p className="text-light-text-secondary dark:text-dark-text-secondary mt-1">View and manage your transaction history.</p>
         </div>
         <div className="flex items-center gap-2">
-            <button onClick={handleExport} className={BTN_SECONDARY_STYLE}>
+            <button onClick={handleExport} className={`${BTN_SECONDARY_STYLE} flex items-center gap-2`}>
                 <span className="material-symbols-outlined text-base">download</span>
                 Export
             </button>
-            <button onClick={handleOpenAddModal} className={`${BTN_PRIMARY_STYLE} bg-[#6D28D9] hover:bg-[#5B21B6]`}>
-                <span className="material-symbols-outlined text-base">add</span>
-                Add transaction
+            <button onClick={handleOpenAddModal} className={BTN_PRIMARY_STYLE}>
+                Add Transaction
             </button>
         </div>
       </header>
@@ -481,36 +545,36 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, saveTransacti
             </nav>
         </div>
 
-        <div className="mt-6 flex justify-between items-center gap-4">
-            <div className="relative flex-grow max-w-md">
-                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-light-text-secondary dark:text-dark-text-secondary pointer-events-none">search</span>
-                <input
-                    ref={searchInputRef}
-                    type="text"
-                    placeholder="Search for transactions..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className={`${INPUT_BASE_STYLE} pl-10 pr-12 h-11`}
-                />
-                <div className="absolute inset-y-0 right-0 flex py-1.5 pr-1.5">
-                    <kbd className="inline-flex items-center rounded border border-gray-200 dark:border-gray-600 px-2 text-sm font-sans font-medium text-gray-400 dark:text-gray-500">
-                        ⌘K
-                    </kbd>
+        <div className="mt-6 flex items-center gap-4">
+            <div className="flex items-center flex-grow rounded-lg bg-light-fill dark:bg-dark-fill h-11">
+                <div className="relative flex-grow flex items-center h-full">
+                    <span className="material-symbols-outlined absolute left-3 text-light-text-secondary dark:text-dark-text-secondary pointer-events-none">search</span>
+                    <input
+                        ref={searchInputRef}
+                        type="text"
+                        placeholder="Search for transactions..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="bg-transparent w-full h-full pl-10 pr-12 focus:outline-none text-light-text dark:text-dark-text placeholder:text-light-text-secondary dark:placeholder:text-dark-text-secondary rounded-l-lg"
+                    />
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-1.5">
+                        <kbd className="inline-flex items-center rounded bg-gray-200 dark:bg-gray-700 px-2 text-sm font-sans font-medium text-gray-500 dark:text-gray-400">
+                            ⌘K
+                        </kbd>
+                    </div>
                 </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-                <div className="flex items-center gap-2 rounded-lg border border-light-separator dark:border-dark-separator h-11 px-3 bg-light-card dark:bg-dark-card">
+                <div className="h-6 w-px bg-light-separator/50 dark:bg-dark-separator/50"></div>
+                <div className="flex items-center gap-2 px-3">
                     <span className="material-symbols-outlined text-light-text-secondary dark:text-dark-text-secondary text-base">calendar_today</span>
                     <input id="start-date" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-transparent focus:outline-none text-sm text-light-text dark:text-dark-text" placeholder="From"/>
                     <span className="text-light-text-secondary dark:text-dark-text-secondary">-</span>
                     <input id="end-date" type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-transparent focus:outline-none text-sm text-light-text dark:text-dark-text" placeholder="To"/>
                 </div>
-                <button onClick={() => setIsFiltersOpen(true)} className={`${BTN_SECONDARY_STYLE} h-11 flex items-center gap-2`}>
-                    <span className="material-symbols-outlined text-base">filter_list</span>
-                    Filters
-                </button>
             </div>
+            <button onClick={() => setIsFiltersOpen(true)} className={`${BTN_SECONDARY_STYLE} h-11 flex items-center gap-2`}>
+                <span className="material-symbols-outlined text-base">filter_list</span>
+                Filters
+            </button>
         </div>
       </div>
       
@@ -589,9 +653,12 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, saveTransacti
         </Card>
         {selectedIds.size > 0 && (
             <div className="absolute bottom-4 inset-x-4 mx-auto max-w-2xl z-20">
-                <div className="bg-light-card/80 dark:bg-dark-card/80 backdrop-blur-sm p-3 rounded-xl shadow-lg border border-black/10 dark:border-white/10 flex items-center justify-between">
+                <div className="bg-light-card/80 dark:bg-dark-card/80 backdrop-blur-sm p-3 rounded-xl shadow-lg flex items-center justify-between">
                     <p className="font-semibold">{selectedIds.size} selected</p>
                     <div className="flex items-center gap-2">
+                        <button onClick={handleMakeRecurring} disabled={selectedIds.size !== 1} className="flex items-center gap-1 p-2 rounded-lg text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/5 dark:hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed" title={selectedIds.size !== 1 ? "Select exactly one transaction" : "Make Recurring"}>
+                            <span className="material-symbols-outlined text-base">repeat</span>Make Recurring
+                        </button>
                         <button onClick={handleOpenCategorizeModal} disabled={containsTransfer} className="flex items-center gap-1 p-2 rounded-lg text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/5 dark:hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed" title={containsTransfer ? "Cannot categorize transfers" : "Categorize"}><span className="material-symbols-outlined text-base">sell</span>Categorize</button>
                         <button onClick={() => setBulkEditModalOpen(true)} disabled={containsTransfer} className="flex items-center gap-1 p-2 rounded-lg text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/5 dark:hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed" title={containsTransfer ? "Cannot bulk edit transfers" : "Edit"}><span className="material-symbols-outlined text-base">edit</span>Edit</button>
                         <button onClick={handleOpenDeleteModal} className="flex items-center gap-1 p-2 rounded-lg text-sm font-semibold text-semantic-red hover:bg-semantic-red/10"><span className="material-symbols-outlined text-base">delete</span>Delete</button>

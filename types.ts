@@ -1,3 +1,4 @@
+
 import React, { Dispatch, SetStateAction } from 'react';
 
 // FIX: Add 'AI Assistant' to Page type
@@ -104,6 +105,16 @@ export interface RecurringTransaction {
   nextDueDate: string;
   dueDateOfMonth?: number; // Day of month (1-31) for monthly/yearly recurrences
   weekendAdjustment: WeekendAdjustment;
+  isSynthetic?: boolean;
+}
+
+export interface RecurringTransactionOverride {
+  recurringTransactionId: string;
+  originalDate: string; // The original date of the occurrence, YYYY-MM-DD
+  date?: string; // New date if overridden
+  amount?: number; // New amount if overridden (signed)
+  description?: string; // New description if overridden
+  isSkipped?: boolean;
 }
 
 export interface Transaction {
@@ -311,6 +322,7 @@ export interface FinancialData {
     transactions: Transaction[];
     investmentTransactions: InvestmentTransaction[];
     recurringTransactions: RecurringTransaction[];
+    recurringTransactionOverrides?: RecurringTransactionOverride[];
     financialGoals: FinancialGoal[];
     budgets: Budget[];
     tasks: Task[];
@@ -384,3 +396,18 @@ export interface ScheduledPayment {
   status: 'Paid' | 'Due' | 'Upcoming' | 'Overdue';
   transactionId?: string;
 }
+
+// FIX: Moved ScheduledItem type from pages/Schedule.tsx to make it globally available.
+export type ScheduledItem = {
+    id: string;
+    isRecurring: boolean;
+    date: string;
+    description: string;
+    amount: number;
+    accountName: string;
+    isTransfer?: boolean;
+    type: 'income' | 'expense' | 'transfer' | 'payment' | 'deposit';
+    originalItem: RecurringTransaction | BillPayment;
+    isOverride?: boolean;
+    originalDateForOverride?: string;
+};

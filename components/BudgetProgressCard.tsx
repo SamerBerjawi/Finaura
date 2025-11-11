@@ -1,5 +1,4 @@
 
-
 import React from 'react';
 import { Category } from '../types';
 import { formatCurrency } from '../utils';

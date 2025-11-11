@@ -293,6 +293,7 @@ export function generateSyntheticLoanPayments(accounts: Account[]): RecurringTra
             nextDueDate: nextPaymentDate.toISOString().split('T')[0],
             dueDateOfMonth: account.paymentDayOfMonth,
             weekendAdjustment: 'after',
+            isSynthetic: true,
         };
         syntheticPayments.push(syntheticRT);
     }

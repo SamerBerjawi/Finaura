@@ -1,7 +1,8 @@
+
 import React, { useMemo } from 'react';
-import { ScheduledItem } from '../pages/Schedule';
+// FIX: Import 'ScheduledItem' from '../types' as it is no longer exported from '../pages/Schedule'.
+import { ScheduledItem } from '../types';
 import Card from './Card';
-import { RecurringTransaction } from '../types';
 
 // Define new color constants
 const INCOME_COLOR = 'bg-green-500';

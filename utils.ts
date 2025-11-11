@@ -241,6 +241,52 @@ export function calculateStatementPeriods(statementStartDay: number, paymentDueD
     };
 }
 
+export function getCreditCardStatementDetails(
+    creditCardAccount: Account,
+    statementStart: Date,
+    statementEnd: Date,
+    allTransactions: Transaction[]
+): { statementBalance: number; amountPaid: number } {
+    if (creditCardAccount.type !== 'Credit Card') {
+        return { statementBalance: 0, amountPaid: 0 };
+    }
+
+    const transactionsInPeriod = allTransactions.filter(tx => {
+        if (tx.accountId !== creditCardAccount.id) return false;
+        const txDate = parseDateAsUTC(tx.date);
+        return txDate >= statementStart && txDate <= statementEnd;
+    });
+
+    let statementBalance = 0;
+    let amountPaid = 0;
+
+    for (const tx of transactionsInPeriod) {
+        // Check if this is a payment from the linked settlement account
+        if (
+            tx.type === 'income' &&
+            tx.transferId &&
+            creditCardAccount.settlementAccountId
+        ) {
+            const counterpart = allTransactions.find(
+                t => t.transferId === tx.transferId && t.id !== tx.id
+            );
+
+            // If the counterpart is from the settlement account, it's a payment.
+            // We should not include it in the current statement balance.
+            if (counterpart && counterpart.accountId === creditCardAccount.settlementAccountId) {
+                amountPaid += tx.amount;
+                continue; // Skip this transaction
+            }
+        }
+        
+        // All other transactions (expenses, refunds, non-settlement income) affect the statement balance.
+        statementBalance += tx.amount;
+    }
+
+    return { statementBalance, amountPaid };
+}
+
+
 export function generateSyntheticLoanPayments(accounts: Account[]): RecurringTransaction[] {
     const syntheticPayments: RecurringTransaction[] = [];
 

@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useCallback, useEffect } from 'react';
 // FIX: Import 'RecurringTransaction' to resolve 'Cannot find name' error.
 import { User, Transaction, Account, Category, Duration, CategorySpending, Widget, WidgetConfig, DisplayTransaction, FinancialGoal, RecurringTransaction, BillPayment, Tag } from '../types';
-import { formatCurrency, getDateRange, calculateAccountTotals, convertToEur, calculateStatementPeriods, generateBalanceForecast, parseDateAsUTC } from '../utils';
+import { formatCurrency, getDateRange, calculateAccountTotals, convertToEur, calculateStatementPeriods, generateBalanceForecast, parseDateAsUTC, getCreditCardStatementDetails } from '../utils';
 import AddTransactionModal from '../components/AddTransactionModal';
 import { BTN_PRIMARY_STYLE, BTN_SECONDARY_STYLE, LIQUID_ACCOUNT_TYPES } from '../constants';
 import TransactionDetailModal from '../components/TransactionDetailModal';
@@ -436,18 +436,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user, transactions, accounts, sav
       return configuredCreditCards.map(account => {
           const periods = calculateStatementPeriods(account.statementStartDate!, account.paymentDate!);
 
-          const calculateBalance = (start: Date, end: Date) => {
-              return transactions
-                  .filter(tx => {
-                      if (tx.accountId !== account.id) return false;
-                      const txDate = parseDateAsUTC(tx.date);
-                      return txDate >= start && txDate <= end;
-                  })
-                  .reduce((sum, tx) => sum + tx.amount, 0);
-          };
-          
-          const currentBalance = calculateBalance(periods.current.start, periods.current.end);
-          const futureBalance = calculateBalance(periods.future.start, periods.future.end);
+          const { statementBalance: currentBalance, amountPaid: currentAmountPaid } = getCreditCardStatementDetails(account, periods.current.start, periods.current.end, transactions);
+          const { statementBalance: futureBalance, amountPaid: futureAmountPaid } = getCreditCardStatementDetails(account, periods.future.start, periods.future.end, transactions);
           
           const formatDate = (date: Date) => date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
           const formatFullDate = (date: Date) => date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
@@ -459,11 +449,13 @@ const Dashboard: React.FC<DashboardProps> = ({ user, transactions, accounts, sav
               creditLimit: account.creditLimit,
               current: {
                   balance: currentBalance,
+                  amountPaid: currentAmountPaid,
                   period: `${formatDate(periods.current.start)} - ${formatDate(periods.current.end)}`,
                   paymentDue: formatFullDate(periods.current.paymentDue)
               },
               future: {
                   balance: futureBalance,
+                  amountPaid: futureAmountPaid,
                   period: `${formatDate(periods.future.start)} - ${formatDate(periods.future.end)}`,
                   paymentDue: formatFullDate(periods.future.paymentDue)
               }
@@ -780,6 +772,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, transactions, accounts, sav
                           <CreditCardStatementCard
                               title="Current Statement"
                               statementBalance={statement.current.balance}
+                              amountPaid={statement.current.amountPaid}
                               accountBalance={statement.accountBalance}
                               creditLimit={statement.creditLimit}
                               currency={statement.currency}
@@ -789,6 +782,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, transactions, accounts, sav
                           <CreditCardStatementCard
                               title="Next Statement"
                               statementBalance={statement.future.balance}
+                              amountPaid={statement.future.amountPaid}
                               accountBalance={statement.accountBalance}
                               creditLimit={statement.creditLimit}
                               currency={statement.currency}

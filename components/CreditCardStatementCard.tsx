@@ -11,9 +11,10 @@ interface CreditCardStatementCardProps {
     currency: Currency;
     statementPeriod: string;
     paymentDueDate: string;
+    amountPaid?: number;
 }
 
-const CreditCardStatementCard: React.FC<CreditCardStatementCardProps> = ({ title, statementBalance, accountBalance, creditLimit, currency, statementPeriod, paymentDueDate }) => {
+const CreditCardStatementCard: React.FC<CreditCardStatementCardProps> = ({ title, statementBalance, accountBalance, creditLimit, currency, statementPeriod, paymentDueDate, amountPaid }) => {
     const balanceColor = statementBalance > 0 ? 'text-green-500' : statementBalance < 0 ? 'text-red-500' : 'text-light-text dark:text-dark-text';
     const usedPercentage = creditLimit && creditLimit > 0 ? (Math.abs(accountBalance) / creditLimit) * 100 : 0;
     
@@ -25,15 +26,23 @@ const CreditCardStatementCard: React.FC<CreditCardStatementCardProps> = ({ title
         <Card>
             <h3 className="font-semibold text-lg text-light-text dark:text-dark-text">{title}</h3>
             <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary">{statementPeriod}</p>
-            <div className="flex items-end justify-between mt-4">
-                <div>
-                    <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary">Statement Balance</p>
-                    <p className={`text-2xl font-bold ${balanceColor}`}>{formatCurrency(statementBalance, currency)}</p>
+            <div className="mt-4 space-y-3">
+                <div className="flex items-end justify-between">
+                    <div>
+                        <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary">Statement Balance</p>
+                        <p className={`text-2xl font-bold ${balanceColor}`}>{formatCurrency(statementBalance, currency)}</p>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary">Payment Due</p>
+                        <p className="font-semibold text-light-text dark:text-dark-text">{paymentDueDate}</p>
+                    </div>
                 </div>
-                <div className="text-right">
-                    <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary">Payment Due</p>
-                    <p className="font-semibold text-light-text dark:text-dark-text">{paymentDueDate}</p>
-                </div>
+                {amountPaid !== undefined && amountPaid > 0 && (
+                    <div className="pt-3 border-t border-black/5 dark:border-white/5">
+                        <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary">Settlement of Previous Statement</p>
+                        <p className="text-lg font-bold text-green-500">{formatCurrency(amountPaid, currency)}</p>
+                    </div>
+                )}
             </div>
             {creditLimit && creditLimit > 0 && (
                 <div className="mt-4 pt-4 border-t border-black/5 dark:border-white/5">

@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useCallback } from 'react';
 // FIX: Import 'AccountDetailProps' to define props for the component.
 import { Account, Transaction, Category, Duration, Page, CategorySpending, Widget, WidgetConfig, DisplayTransaction, RecurringTransaction, AccountDetailProps, Tag, ScheduledPayment } from '../types';
-import { formatCurrency, getDateRange, convertToEur, calculateStatementPeriods } from '../utils';
+import { formatCurrency, getDateRange, convertToEur, calculateStatementPeriods, getCreditCardStatementDetails } from '../utils';
 import AddTransactionModal from '../components/AddTransactionModal';
 import { BTN_PRIMARY_STYLE, MOCK_EXPENSE_CATEGORIES, BTN_SECONDARY_STYLE } from '../constants';
 import TransactionDetailModal from '../components/TransactionDetailModal';
@@ -373,19 +373,8 @@ const AccountDetail: React.FC<AccountDetailProps> = ({ account, accounts, transa
     
         const periods = calculateStatementPeriods(account.statementStartDate!, account.paymentDate!);
         
-        const calculateBalance = (start: Date, end: Date) => {
-            return transactions
-                .filter(tx => {
-                    if (tx.accountId !== account.id) return false;
-                    const [year, month, day] = tx.date.split('-').map(Number);
-                    const txDate = new Date(Date.UTC(year, month - 1, day));
-                    return txDate >= start && txDate <= end;
-                })
-                .reduce((sum, tx) => sum + tx.amount, 0);
-        };
-    
-        const currentBalance = calculateBalance(periods.current.start, periods.current.end);
-        const futureBalance = calculateBalance(periods.future.start, periods.future.end);
+        const { statementBalance: currentBalance, amountPaid: currentAmountPaid } = getCreditCardStatementDetails(account, periods.current.start, periods.current.end, transactions);
+        const { statementBalance: futureBalance, amountPaid: futureAmountPaid } = getCreditCardStatementDetails(account, periods.future.start, periods.future.end, transactions);
         
         const formatDate = (date: Date) => date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
         const formatFullDate = (date: Date) => date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
@@ -393,11 +382,13 @@ const AccountDetail: React.FC<AccountDetailProps> = ({ account, accounts, transa
         return {
             current: {
                 balance: currentBalance,
+                amountPaid: currentAmountPaid,
                 period: `${formatDate(periods.current.start)} - ${formatDate(periods.current.end)}`,
                 paymentDue: formatFullDate(periods.current.paymentDue)
             },
             future: {
                 balance: futureBalance,
+                amountPaid: futureAmountPaid,
                 period: `${formatDate(periods.future.start)} - ${formatDate(periods.future.end)}`,
                 paymentDue: formatFullDate(periods.future.paymentDue)
             }
@@ -687,6 +678,7 @@ const AccountDetail: React.FC<AccountDetailProps> = ({ account, accounts, transa
                     <CreditCardStatementCard
                         title="Current Statement"
                         statementBalance={statementData.current.balance}
+                        amountPaid={statementData.current.amountPaid}
                         accountBalance={account.balance}
                         creditLimit={account.creditLimit}
                         currency={account.currency}
@@ -696,6 +688,7 @@ const AccountDetail: React.FC<AccountDetailProps> = ({ account, accounts, transa
                     <CreditCardStatementCard
                         title="Next Statement"
                         statementBalance={statementData.future.balance}
+                        amountPaid={statementData.future.amountPaid}
                         accountBalance={account.balance}
                         creditLimit={account.creditLimit}
                         currency={account.currency}

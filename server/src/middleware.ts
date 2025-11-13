@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
+const JWT_SECRET = process.env.JWT_SECRET || 'default-secret';
+
 // FIX: Explicitly add body and headers to solve potential type conflicts with a global Request type.
 export interface AuthRequest extends Request {
     user?: { id: number; email: string };
@@ -23,7 +25,7 @@ export const authenticateToken = (req: AuthRequest, res: Response, next: NextFun
         return res.end();
     }
 
-    jwt.verify(token, process.env.JWT_SECRET as string, (err: any, user: any) => {
+    jwt.verify(token, JWT_SECRET, (err: any, user: any) => {
         // FIX: Replaced status().end() with statusCode and end() to resolve a property 'status' not existing on the Response type due to potential type conflicts.
         if (err) {
             res.statusCode = 403;

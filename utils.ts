@@ -60,13 +60,14 @@ export function calculateAccountTotals(accounts: Account[]) {
     
     const totalDebt = accounts
       .filter(acc => DEBT_TYPES.includes(acc.type))
-      .reduce((sum, acc) => sum + convertToEur(acc.balance, acc.currency), 0);
+      .reduce((sum, acc) => sum + Math.abs(convertToEur(acc.balance, acc.currency)), 0);
       
     const creditCardDebt = accounts
       .filter(acc => acc.type === 'Credit Card')
-      .reduce((sum, acc) => sum + convertToEur(acc.balance, acc.currency), 0);
+      .reduce((sum, acc) => sum + Math.abs(convertToEur(acc.balance, acc.currency)), 0);
 
-    const netWorth = totalAssets + totalDebt;
+    // Debts reduce net worth, so subtract the total debt (which we treat as a positive number)
+    const netWorth = totalAssets - totalDebt;
 
     return { totalAssets, totalDebt, netWorth, creditCardDebt };
 }
@@ -401,7 +402,7 @@ export function generateBalanceForecast(
                     break;
                 }
                 case 'yearly': {
-                     const d = rt.dueDateOfMonth || startDateUTC.getUTCMonth();
+                     const d = rt.dueDateOfMonth || startDateUTC.getUTCDate();
                      const m = startDateUTC.getUTCMonth();
                      nextDate.setUTCFullYear(nextDate.getUTCFullYear() + interval);
                      const lastDay = new Date(Date.UTC(nextDate.getUTCFullYear(), m + 1, 0)).getUTCDate();

@@ -401,8 +401,8 @@ export const App: React.FC = () => {
     async (
       data: FinancialData,
       options?: { keepalive?: boolean; suppressErrors?: boolean }
-    ) => {
-      if (!token || isDemoMode) return;
+    ): Promise<boolean> => {
+      if (!token || isDemoMode) return false;
       try {
         const response = await fetch('/api/data', {
           method: 'POST',
@@ -414,13 +414,20 @@ export const App: React.FC = () => {
           keepalive: options?.keepalive,
         });
 
-        if (!response.ok && !options?.suppressErrors) {
-          console.error('Failed to save data:', await response.text());
+        if (!response.ok) {
+          if (!options?.suppressErrors) {
+            const errorText = await response.text().catch(() => '');
+            console.error('Failed to save data:', errorText || response.statusText);
+          }
+          return false;
         }
+
+        return true;
       } catch (error) {
         if (!options?.suppressErrors) {
           console.error('Failed to save data:', error);
         }
+        return false;
       }
     },
     [token, isDemoMode]
@@ -958,10 +965,11 @@ export const App: React.FC = () => {
                 skipNextSaveRef.current = false;
                 loadAllFinancialData(data as FinancialData);
                 if (!isDemoMode) {
-                    try {
-                        await saveData(data as FinancialData);
-                    } catch (err) {
-                        console.error('Failed to save imported data:', err);
+                    const normalizedData = latestDataRef.current;
+                    const saveSucceeded = await saveData(normalizedData);
+                    if (!saveSucceeded) {
+                        alert('Data was loaded locally, but saving it to the server failed. Please try again.');
+                        return;
                     }
                 }
                 if (isDemoMode) {

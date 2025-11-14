@@ -35,7 +35,7 @@ const PortfolioDistributionChart: React.FC<PortfolioDistributionChartProps> = ({
             <PieChart>
                 <Pie
                     data={data}
-                    cx="45%"
+                    cx="40%"
                     cy="50%"
                     innerRadius="60%"
                     outerRadius="80%"
@@ -52,7 +52,7 @@ const PortfolioDistributionChart: React.FC<PortfolioDistributionChartProps> = ({
                 <Legend iconType="circle" iconSize={8} layout="vertical" verticalAlign="middle" align="right" />
             </PieChart>
         </ResponsiveContainer>
-        <div className="absolute top-1/2 left-[45%] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center pointer-events-none">
+        <div className="absolute top-1/2 left-[40%] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center pointer-events-none">
             <span className="text-light-text-secondary dark:text-dark-text-secondary text-sm">Total Value</span>
             <span className="text-2xl font-bold text-light-text dark:text-dark-text">{formatCurrency(totalValue, 'EUR')}</span>
         </div>

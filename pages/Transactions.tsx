@@ -40,6 +40,8 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, saveTransacti
   const [isRecurringModalOpen, setIsRecurringModalOpen] = useState(false);
   const [transactionToMakeRecurring, setTransactionToMakeRecurring] = useState<RecurringTransaction | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const [contextMenu, setContextMenu] = useState<{ x: number, y: number, transaction: DisplayTransaction } | null>(null);
+  const contextMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -51,6 +53,18 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, saveTransacti
     window.addEventListener('keydown', handleKeyDown);
     return () => {
         window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+  
+  useEffect(() => {
+    const handleClick = (event: MouseEvent) => {
+        if (contextMenuRef.current && !contextMenuRef.current.contains(event.target as Node)) {
+            setContextMenu(null);
+        }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => {
+        document.removeEventListener('mousedown', handleClick);
     };
   }, []);
 
@@ -332,13 +346,15 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, saveTransacti
     setEditingTransaction(null);
   };
   
-  const handleMakeRecurring = () => {
-    if (selectedIds.size !== 1) return;
+  const handleMakeRecurring = (txToConvert?: DisplayTransaction) => {
+    let displayTx: DisplayTransaction | undefined = txToConvert;
 
-    const selectedId = Array.from(selectedIds)[0];
+    if (!displayTx) {
+      if (selectedIds.size !== 1) return;
+      const selectedId = Array.from(selectedIds)[0];
+      displayTx = displayTransactions.find(tx => tx.id === selectedId);
+    }
     
-    // Find the full transaction object from the display list first, then find original if needed.
-    const displayTx = displayTransactions.find(tx => tx.id === selectedId);
     if (!displayTx) return;
 
     let transaction: Transaction | undefined;
@@ -509,6 +525,43 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, saveTransacti
             </div>
         </Modal>
       )}
+       {contextMenu && (
+            <div
+                ref={contextMenuRef}
+                style={{ top: contextMenu.y, left: contextMenu.x }}
+                className="absolute z-30 w-56 bg-light-card dark:bg-dark-card rounded-lg shadow-lg border border-black/10 dark:border-white/10 py-2 animate-fade-in-up"
+            >
+                <ul className="text-sm">
+                    <li>
+                        <button onClick={() => { handleOpenEditModal(contextMenu.transaction); setContextMenu(null); }} className="w-full text-left flex items-center gap-3 px-4 py-2 hover:bg-black/5 dark:hover:bg-white/10">
+                            <span className="material-symbols-outlined text-base">edit</span>
+                            <span>Edit Transaction</span>
+                        </button>
+                    </li>
+                    <li>
+                        <button 
+                            onClick={() => { handleMakeRecurring(contextMenu.transaction); setContextMenu(null); }} 
+                            disabled={contextMenu.transaction.isTransfer}
+                            className="w-full text-left flex items-center gap-3 px-4 py-2 hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            <span className="material-symbols-outlined text-base">repeat</span>
+                            <span>Make Recurring</span>
+                        </button>
+                    </li>
+                    <div className="my-1 h-px bg-light-separator dark:bg-dark-separator"></div>
+                    <li>
+                        <button onClick={() => { 
+                            setSelectedIds(new Set([contextMenu.transaction.id]));
+                            setIsDeleteConfirmOpen(true);
+                            setContextMenu(null);
+                        }} className="w-full text-left flex items-center gap-3 px-4 py-2 text-semantic-red hover:bg-semantic-red/10">
+                            <span className="material-symbols-outlined text-base">delete</span>
+                            <span>Delete Transaction</span>
+                        </button>
+                    </li>
+                </ul>
+            </div>
+        )}
 
       <header className="flex justify-between items-start">
         <div>
@@ -619,7 +672,7 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, saveTransacti
                                 const categoryColor = tx.isTransfer ? '#64748B' : (categoryDetails.color || '#A0AEC0');
                                 
                                 return (
-                                <div key={tx.id} className="flex items-center group hover:bg-light-fill dark:hover:bg-dark-fill cursor-pointer px-6" onClick={() => handleOpenEditModal(tx)}>
+                                <div key={tx.id} className="flex items-center group hover:bg-light-fill dark:hover:bg-dark-fill cursor-pointer px-6" onClick={() => handleOpenEditModal(tx)} onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, transaction: tx }); }}>
                                   <div className="flex items-center gap-3">
                                       <input type="checkbox" className={CHECKBOX_STYLE} checked={selectedIds.has(tx.id)} onChange={(e) => { e.stopPropagation(); handleSelectOne(tx.id); }} onClick={e => e.stopPropagation()} aria-label={`Select transaction ${tx.description}`}/>
                                       <div className="w-1.5 h-10 flex-shrink-0 rounded-full" style={{backgroundColor: categoryColor}}></div>
@@ -660,7 +713,7 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, saveTransacti
                 <div className="bg-light-card/80 dark:bg-dark-card/80 backdrop-blur-sm p-3 rounded-xl shadow-lg flex items-center justify-between">
                     <p className="font-semibold">{selectedIds.size} selected</p>
                     <div className="flex items-center gap-2">
-                        <button onClick={handleMakeRecurring} disabled={selectedIds.size !== 1} className="flex items-center gap-1 p-2 rounded-lg text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/5 dark:hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed" title={selectedIds.size !== 1 ? "Select exactly one transaction" : "Make Recurring"}>
+                        <button onClick={() => handleMakeRecurring()} disabled={selectedIds.size !== 1} className="flex items-center gap-1 p-2 rounded-lg text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/5 dark:hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed" title={selectedIds.size !== 1 ? "Select exactly one transaction" : "Make Recurring"}>
                             <span className="material-symbols-outlined text-base">repeat</span>Make Recurring
                         </button>
                         <button onClick={handleOpenCategorizeModal} disabled={containsTransfer} className="flex items-center gap-1 p-2 rounded-lg text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/5 dark:hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed" title={containsTransfer ? "Cannot categorize transfers" : "Categorize"}><span className="material-symbols-outlined text-base">sell</span>Categorize</button>

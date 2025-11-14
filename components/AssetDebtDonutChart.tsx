@@ -16,7 +16,7 @@ const AssetDebtDonutChart: React.FC<DonutChartProps> = ({ assets, debt }) => {
     { name: 'Debt', value: Math.abs(debt) > 0 ? Math.abs(debt) : 0 },
   ].filter(d => d.value > 0); // Filter out zero-value segments
   
-  const netWorth = assets + debt;
+  const netWorth = assets - debt;
 
   return (
     <div className="h-full flex flex-col">

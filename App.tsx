@@ -434,6 +434,27 @@ export const App: React.FC = () => {
     [token, isDemoMode]
   );
 
+  const saveDataWithRetry = useCallback(
+    async (
+      data: FinancialData,
+      options?: { attempts?: number }
+    ): Promise<boolean> => {
+      const maxAttempts = Math.max(1, options?.attempts ?? 3);
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        const succeeded = await saveData(data);
+        if (succeeded) {
+          return true;
+        }
+
+        if (attempt < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, attempt * 1000));
+        }
+      }
+      return false;
+    },
+    [saveData]
+  );
+
   useEffect(() => {
     if (!isDataLoaded || !isAuthenticated || isDemoMode || restoreInProgressRef.current) {
       return;
@@ -970,9 +991,9 @@ export const App: React.FC = () => {
                 try {
                     if (!isDemoMode) {
                         const normalizedData = latestDataRef.current;
-                        const saveSucceeded = await saveData(normalizedData);
+                        const saveSucceeded = await saveDataWithRetry(normalizedData);
                         if (!saveSucceeded) {
-                            alert('Data was loaded locally, but saving it to the server failed. Please try again.');
+                            alert('Data was loaded locally, but we could not reach the server after multiple attempts. Please try again in a moment.');
                             return;
                         }
                     }

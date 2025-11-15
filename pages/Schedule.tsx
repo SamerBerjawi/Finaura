@@ -1,5 +1,4 @@
 
-
 import React, { useState, useMemo } from 'react';
 // FIX: Import ScheduledItem from global types and remove local definition.
 import { RecurringTransaction, Account, Category, BillPayment, Currency, AccountType, RecurringTransactionOverride, ScheduledItem, Transaction, Tag } from '../types';
@@ -152,6 +151,10 @@ const Schedule: React.FC<ScheduleProps> = (props) => {
     const { upcomingItems, paidItems, accountSummaries, globalSummary } = useMemo(() => {
         const today = new Date();
         const todayUTC = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+        
+        const startRecurringScanDate = new Date(todayUTC);
+        startRecurringScanDate.setUTCDate(startRecurringScanDate.getUTCDate() - 3);
+
         const dateIn30Days = new Date(todayUTC); dateIn30Days.setUTCDate(todayUTC.getUTCDate() + 30);
         const forecastEndDate = new Date(todayUTC); forecastEndDate.setFullYear(today.getFullYear() + 2);
 
@@ -165,7 +168,7 @@ const Schedule: React.FC<ScheduleProps> = (props) => {
             const endDateUTC = rt.endDate ? parseAsUTC(rt.endDate) : null;
             const startDateUTC = parseAsUTC(rt.startDate);
 
-            while (nextDate < todayUTC && (!endDateUTC || nextDate < endDateUTC)) {
+            while (nextDate < startRecurringScanDate && (!endDateUTC || nextDate < endDateUTC)) {
                 const interval = rt.frequencyInterval || 1;
                 switch (rt.frequency) {
                     case 'daily': nextDate.setUTCDate(nextDate.getUTCDate() + interval); break;
@@ -468,7 +471,9 @@ const Schedule: React.FC<ScheduleProps> = (props) => {
     };
     
     const groupedUpcomingItems = groupItems(upcomingItems.filter(item => {
-        return parseAsUTC(item.date) >= new Date(new Date().toISOString().split('T')[0]);
+        const today = new Date();
+        const startFilterDate = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() - 3));
+        return parseAsUTC(item.date) >= startFilterDate;
     }));
 
     return (

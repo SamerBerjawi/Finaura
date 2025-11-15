@@ -1,9 +1,9 @@
 import React, { useMemo, useState, useCallback, useEffect } from 'react';
 // FIX: Import 'RecurringTransaction' to resolve 'Cannot find name' error.
-import { User, Transaction, Account, Category, Duration, CategorySpending, Widget, WidgetConfig, DisplayTransaction, FinancialGoal, RecurringTransaction, BillPayment, Tag } from '../types';
+import { User, Transaction, Account, Category, Duration, CategorySpending, Widget, WidgetConfig, DisplayTransaction, FinancialGoal, RecurringTransaction, BillPayment, Tag, Budget } from '../types';
 import { formatCurrency, getDateRange, calculateAccountTotals, convertToEur, calculateStatementPeriods, generateBalanceForecast, parseDateAsUTC, getCreditCardStatementDetails } from '../utils';
 import AddTransactionModal from '../components/AddTransactionModal';
-import { BTN_PRIMARY_STYLE, BTN_SECONDARY_STYLE, LIQUID_ACCOUNT_TYPES } from '../constants';
+import { BTN_PRIMARY_STYLE, BTN_SECONDARY_STYLE, LIQUID_ACCOUNT_TYPES, ASSET_TYPES, DEBT_TYPES, ACCOUNT_TYPE_STYLES, INVESTMENT_SUB_TYPE_STYLES } from '../constants';
 import TransactionDetailModal from '../components/TransactionDetailModal';
 import WidgetWrapper from '../components/WidgetWrapper';
 import OutflowsChart from '../components/OutflowsChart';
@@ -22,6 +22,8 @@ import TransactionMatcherModal from '../components/TransactionMatcherModal';
 import Card from '../components/Card';
 import CreditCardStatementCard from '../components/CreditCardStatementCard';
 import LowestBalanceForecastCard from '../components/LowestBalanceForecastCard';
+import BudgetOverviewWidget from '../components/BudgetOverviewWidget';
+import AccountBreakdownCard from '../components/AccountBreakdownCard';
 
 
 interface DashboardProps {
@@ -39,6 +41,7 @@ interface DashboardProps {
   duration: Duration;
   setDuration: (duration: Duration) => void;
   tags: Tag[];
+  budgets: Budget[];
 }
 
 const findCategoryDetails = (name: string, categories: Category[]): Category | undefined => {
@@ -70,7 +73,7 @@ const toYYYYMMDD = (date: Date) => {
     return `${y}-${m}-${d}`;
 };
 
-const Dashboard: React.FC<DashboardProps> = ({ user, transactions, accounts, saveTransaction, incomeCategories, expenseCategories, financialGoals, recurringTransactions, billsAndPayments, selectedAccountIds, setSelectedAccountIds, duration, setDuration, tags }) => {
+const Dashboard: React.FC<DashboardProps> = ({ user, transactions, accounts, saveTransaction, incomeCategories, expenseCategories, financialGoals, recurringTransactions, billsAndPayments, selectedAccountIds, setSelectedAccountIds, duration, setDuration, tags, budgets }) => {
   const [isTransactionModalOpen, setTransactionModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   
@@ -361,7 +364,57 @@ const Dashboard: React.FC<DashboardProps> = ({ user, transactions, accounts, sav
   }, [filteredTransactions, duration, transactions]);
 
 
-  const { totalAssets, totalDebt, netWorth } = useMemo(() => calculateAccountTotals(selectedAccounts), [selectedAccounts]);
+  const { totalAssets, totalDebt, netWorth, assetBreakdown, debtBreakdown } = useMemo(() => {
+    const safeAccounts = selectedAccounts || [];
+    
+    const { totalAssets, totalDebt, netWorth } = calculateAccountTotals(safeAccounts);
+
+    const colorClassToHex: { [key: string]: string } = {
+        'text-blue-500': '#3b82f6',
+        'text-green-500': '#22c55e',
+        'text-orange-500': '#f97316',
+        'text-purple-500': '#8b5cf6',
+        'text-red-500': '#ef4444',
+        'text-teal-500': '#14b8a6',
+        'text-yellow-500': '#eab308',
+        'text-cyan-500': '#06b6d4',
+        'text-lime-500': '#84cc16',
+        'text-pink-500': '#ec4899',
+        'text-amber-500': '#f59e0b',
+        'text-indigo-500': '#6366f1',
+        'text-lime-600': '#65a30d',
+        'text-slate-500': '#64748b'
+    };
+
+    const createBreakdown = (accs: Account[]) => {
+        const grouped = accs.reduce((acc, account) => {
+            const group = acc[account.type] || { value: 0, color: '#A0AEC0' };
+            let style;
+            if(account.type === 'Investment' && account.subType) {
+                style = INVESTMENT_SUB_TYPE_STYLES[account.subType];
+            } else {
+                style = ACCOUNT_TYPE_STYLES[account.type];
+            }
+            
+            if (style) {
+                 group.color = colorClassToHex[style.color] || '#A0AEC0';
+            }
+            group.value += convertToEur(account.balance, account.currency);
+            acc[account.type] = group;
+            return acc;
+        }, {} as Record<string, { value: number, color: string }>);
+        
+        return Object.entries(grouped).map(([name, data]) => ({ name, value: Math.abs(data.value), color: data.color })).filter(item => item.value > 0);
+    };
+
+    return {
+        totalAssets,
+        totalDebt,
+        netWorth,
+        assetBreakdown: createBreakdown(safeAccounts.filter(acc => ASSET_TYPES.includes(acc.type))),
+        debtBreakdown: createBreakdown(safeAccounts.filter(acc => DEBT_TYPES.includes(acc.type))),
+    };
+  }, [selectedAccounts]);
 
   const netWorthData = useMemo(() => {
     const { start, end } = getDateRange(duration, transactions);
@@ -587,13 +640,21 @@ const Dashboard: React.FC<DashboardProps> = ({ user, transactions, accounts, sav
 
     }, [selectedAccounts, recurringTransactions, financialGoals, billsAndPayments, accounts]);
 
+  const handleBudgetClick = useCallback(() => {
+    // A real implementation might navigate to the budget page and filter by category
+    alert("Navigate to budget page.");
+  }, []);
+
   // --- Widget Management ---
   const allWidgets: Widget[] = useMemo(() => [
     { id: 'netWorthOverTime', name: 'Net Worth Over Time', defaultW: 4, defaultH: 2, component: NetWorthChart, props: { data: netWorthData, lineColor: netWorthTrendColor } },
     { id: 'outflowsByCategory', name: 'Outflows by Category', defaultW: 2, defaultH: 2, component: OutflowsChart, props: { data: outflowsByCategory, onCategoryClick: handleCategoryClick } },
     { id: 'netWorthBreakdown', name: 'Net Worth Breakdown', defaultW: 2, defaultH: 2, component: AssetDebtDonutChart, props: { assets: totalAssets, debt: totalDebt } },
-    { id: 'recentActivity', name: 'Recent Activity', defaultW: 4, defaultH: 2, component: TransactionList, props: { transactions: recentTransactions, allCategories: allCategories, onTransactionClick: handleTransactionClick } }
-  ], [netWorthData, netWorthTrendColor, outflowsByCategory, handleCategoryClick, totalAssets, totalDebt, recentTransactions, allCategories, handleTransactionClick]);
+    { id: 'recentActivity', name: 'Recent Activity', defaultW: 4, defaultH: 2, component: TransactionList, props: { transactions: recentTransactions, allCategories: allCategories, onTransactionClick: handleTransactionClick } },
+    { id: 'assetBreakdown', name: 'Asset Breakdown', defaultW: 2, defaultH: 2, component: AccountBreakdownCard, props: { title: 'Assets', totalValue: totalAssets, breakdownData: assetBreakdown } },
+    { id: 'liabilityBreakdown', name: 'Liability Breakdown', defaultW: 2, defaultH: 2, component: AccountBreakdownCard, props: { title: 'Liabilities', totalValue: totalDebt, breakdownData: debtBreakdown } },
+    { id: 'budgetOverview', name: 'Budget Overview', defaultW: 2, defaultH: 2, component: BudgetOverviewWidget, props: { budgets: budgets, transactions: transactions, expenseCategories: expenseCategories, accounts: accounts, duration: duration, onBudgetClick: handleBudgetClick } },
+  ], [netWorthData, netWorthTrendColor, outflowsByCategory, handleCategoryClick, totalAssets, totalDebt, recentTransactions, allCategories, handleTransactionClick, assetBreakdown, debtBreakdown, budgets, transactions, expenseCategories, accounts, duration, handleBudgetClick]);
 
   const [widgets, setWidgets] = useLocalStorage<WidgetConfig[]>('dashboard-layout', allWidgets.map(w => ({ id: w.id, title: w.name, w: w.defaultW, h: w.defaultH })));
 

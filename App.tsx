@@ -1,4 +1,3 @@
-
 // FIX: Import `useMemo` from React to resolve the 'Cannot find name' error.
 import React, { useState, useEffect, useMemo, useCallback, Suspense, lazy, useRef } from 'react';
 import Sidebar from './components/Sidebar';
@@ -1081,7 +1080,7 @@ export const App: React.FC = () => {
 
     switch (currentPage) {
       case 'Dashboard':
-        return <Dashboard user={currentUser!} transactions={transactions} accounts={accounts} saveTransaction={handleSaveTransaction} incomeCategories={incomeCategories} expenseCategories={expenseCategories} financialGoals={financialGoals} recurringTransactions={recurringTransactions} billsAndPayments={billsAndPayments} selectedAccountIds={dashboardAccountIds} setSelectedAccountIds={setDashboardAccountIds} duration={dashboardDuration} setDuration={setDashboardDuration} tags={tags} />;
+        return <Dashboard user={currentUser!} transactions={transactions} accounts={accounts} saveTransaction={handleSaveTransaction} incomeCategories={incomeCategories} expenseCategories={expenseCategories} financialGoals={financialGoals} recurringTransactions={recurringTransactions} billsAndPayments={billsAndPayments} selectedAccountIds={dashboardAccountIds} setSelectedAccountIds={setDashboardAccountIds} duration={dashboardDuration} setDuration={setDashboardDuration} tags={tags} budgets={budgets} />;
       case 'Accounts':
         return <Accounts accounts={accounts} transactions={transactions} saveAccount={handleSaveAccount} deleteAccount={handleDeleteAccount} setCurrentPage={setCurrentPage} setAccountFilter={setAccountFilter} setViewingAccountId={setViewingAccountId} saveTransaction={handleSaveTransaction} accountOrder={accountOrder} setAccountOrder={setAccountOrder} sortBy={accountsSortBy} setSortBy={setAccountsSortBy} warrants={warrants} onToggleAccountStatus={handleToggleAccountStatus} />;
       case 'Transactions':

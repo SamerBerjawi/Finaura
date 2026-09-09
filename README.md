@@ -1,8 +1,8 @@
 # Crystal 🔮
 
-**Crystal** is the ultimate personal finance operating system. It moves beyond simple expense tracking to provide a professional-grade financial simulation engine wrapped in a beautiful, **privacy-first, self-hosted** application.
+**Crystal** is the ultimate personal finance operating system. It moves beyond simple retrospective expense tracking to provide a professional-grade predictive wealth forecasting and financial simulation engine wrapped in a beautiful, **privacy-first, self-hosted** application.
 
-Designed for data sovereignty, Crystal ensures your financial data remains yours while offering features typically found only in enterprise wealth management software.
+Designed for data sovereignty, Crystal ensures your financial data remains yours while offering predictive capabilities typically found only in enterprise wealth management software. Crystal analyzes your historical financial velocity and merges it with expected future transactions to project your true liquidity, net worth, and cashflow trajectory up to 2 years ahead.
 
 <img width="3565" height="1879" alt="Crystal Dashboard" src="https://github.com/user-attachments/assets/fdcd513b-f0c2-492c-9124-b34453fbf196" />
 
@@ -13,11 +13,16 @@ Designed for data sovereignty, Crystal ensures your financial data remains yours
 * **Live Market Data:** Real-time stock, ETF, and crypto pricing via **Twelve Data**.
 * **Merchant Intelligence:** Automatically profile entities and fetch branding via **Brandfetch**.
 
+### 🔮 Predictive Wealth & Cashflow Forecasting
+* **Deterministic Cashflow Simulation:** Daily balance and net worth projections up to 2 years into the future.
+* **Historic & Forward Synthesis:** Merges historical cash velocity with upcoming expected transactions (salaries, recurring subscriptions, credit card statement cycles, and loan amortizations).
+* **Liquidity Horizon Warnings:** Pinpoints future lowest-balance dates to avert cash crunches before they happen.
+* **Dynamic Goal Projections:** Realistic goal completion timelines calculated from forward cashflow models rather than static averages.
+
 ### 🧠 Financial Intelligence
 * **Taxonomy Blueprint:** Define complex hierarchical categories for rigid data structure.
 * **Semantic Overlays:** Layer flat tags (#trip, #project) to cluster data across categories without breaking your taxonomy.
 * **Auto-Categorization:** Intelligent suggestions based on merchant profile and temporal patterns.
-* **Smart Forecast:** 2-Year daily balance projections based on recurring income, bills, and goals.
 
 ---
 
@@ -45,6 +50,13 @@ Crystal is organized around powerful views that provide both a high-level pulse 
 ### 📈 Investments - Portfolio Lab
 * Performance, risk, and allocation snapshots with drill-downs into individual holdings and transactions.
 * **Warrants & Grants:** Specialized tracking for employee equity, including strike prices and vesting.
+
+### 🔮 Forecasting - Predictive Wealth & Cashflow Lab
+* **Deterministic Cashflow Simulation:** Daily account balance and wealth projection bridging historical spending behavior with scheduled future inflows and outflows.
+* **Liquidity Horizon & Dip Detection:** Identifies future lowest-balance thresholds and pinpoint dates to prevent overdrafts and liquidity crunches months in advance.
+* **Goal Trajectory Projections:** Projects exact completion dates for financial goals based on real expected forward cash accumulation rather than static linear models.
+* **Synthetic Obligation Modeling:** Automatically incorporates loan amortization schedules, credit card payment cycles, and recurring obligations into future balances.
+* **Scenario Playground:** Stress-test decisions (e.g. major expenditures, income disruptions, payment deferrals) against your future trajectory.
 
 ---
 

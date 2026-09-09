@@ -3,25 +3,25 @@ id: crystal
 category: finance
 name: Crystal
 version: "2.3.0"
-tagline: Personal wealth tracker and financial portfolio intelligence
+tagline: Personal wealth tracker with predictive cashflow & future forecasting
 description: >-
-  Crystal is an open-source, self-hosted personal finance and portfolio tracker designed to give you clarity and complete control over your wealth without sacrificing privacy.
+  Crystal is an open-source, self-hosted personal wealth operating system and portfolio intelligence platform designed for complete financial clarity and data sovereignty.
 
 
-  Aggregate assets across bank accounts, crypto wallets, stocks, real estate, and physical commodities into a single intuitive dashboard with real-time valuations, analytics, and net-worth breakdowns.
+  Unlike static budget trackers, Crystal features a deterministic wealth forecasting and cashflow simulation engine. By synthesising your historical financial habits with scheduled future transactions, recurring obligations, debt amortizations, and savings goals, Crystal projects your daily cash position and net-worth trajectory up to 2 years into the future.
 
 
   Features:
 
-  - Comprehensive asset tracking: Track fiat cash, investments, cryptocurrency, real estate, precious metals, and loans.
+  - Predictive Wealth & Cashflow Engine: Project daily account balances, anticipate liquidity crunches before they happen, and model savings goal horizons based on historical cashflow and scheduled future events.
 
-  - Real-time market analytics: Live asset pricing, historical charts, performance benchmarks, and distribution visualization.
+  - Comprehensive Asset Tracking: Unify liquid cash, investment portfolios, crypto, real estate, vehicles, commodities, and equity grants in one secure hub.
 
-  - Multi-currency support: Seamless currency conversion and multi-currency portfolio valuation.
+  - Real-Time Market Analytics: Live asset valuations, interactive historical charts, performance metrics, and geospatial transaction spending maps.
 
-  - Complete privacy: 100% self-hosted with local PostgreSQL persistence. Your financial data stays entirely on your Umbrel server.
+  - Complete Privacy & Sovereignty: 100% self-hosted with dedicated local PostgreSQL persistence. Your financial records never leave your Umbrel node.
 
-  - Modern responsive interface: Fast and accessible on desktop, tablet, and mobile.
+  - Modern Responsive Interface: Fluid, interactive desktop and mobile views with one-click privacy blur modes for public viewing.
 releaseNotes: ""
 
 developer: Samer Berjawi

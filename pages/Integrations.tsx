@@ -5,6 +5,7 @@ import SettingsSubpageHeader from '../components/SettingsSubpageHeader';
 import { INPUT_BASE_STYLE } from '../constants';
 import EnableBankingIntegrationCard from '../components/EnableBankingIntegrationCard';
 import Icon from '../components/ui/Icon';
+import { useLocalStorage } from '../hooks/useLocalStorage';
 
 interface IntegrationsProps {
   preferences: AppPreferences;
@@ -112,6 +113,12 @@ const Integrations: React.FC<IntegrationsProps> = ({
     brandfetchClientId: preferences.brandfetchClientId || '',
   });
 
+  // CARTO key is stored directly in localStorage (not in AppPreferences)
+  // so TransactionMapWidget can read it without needing a preferences prop
+  const [cartoApiKey, setCartoApiKey] = useLocalStorage<string>('crystal_carto_api_key', '');
+  const [localCartoKey, setLocalCartoKey] = React.useState(cartoApiKey);
+  React.useEffect(() => { setLocalCartoKey(cartoApiKey); }, [cartoApiKey]);
+
   React.useEffect(() => {
     setLocalApiKeys({
       twelveDataApiKey: preferences.twelveDataApiKey || '',
@@ -169,6 +176,17 @@ const Integrations: React.FC<IntegrationsProps> = ({
                   onBlur={() => handleCommit('brandfetchClientId')}
                   placeholder="Enter Client Access ID"
                   colorClass="bg-pink-500 text-white shadow-pink-500/20"
+              />
+              <ApiKeyCard
+                  title="CARTO Basemaps"
+                  description="Raster tile provider for the transaction map widget. Enables dark & light styled map tiles. Get a free key at carto.com/basemaps/apikey."
+                  icon="map"
+                  name="cartoApiKey"
+                  value={localCartoKey}
+                  onChange={(value) => setLocalCartoKey(value)}
+                  onBlur={() => setCartoApiKey(localCartoKey)}
+                  placeholder="Enter CARTO API Key"
+                  colorClass="bg-cyan-500 text-white shadow-cyan-500/20"
               />
           </div>
       </section>

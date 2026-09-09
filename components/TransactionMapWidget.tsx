@@ -5,6 +5,8 @@ import { Transaction, Currency } from '../types';
 import { formatCurrency } from '../utils';
 import L from 'leaflet';
 import Icon from './ui/Icon';
+import { useCartoBasemap } from '../hooks/useCartoBasemap';
+import { useLocalStorage } from '../hooks/useLocalStorage';
 
 type CountryCode = Lowercase<TCountryCode>;
 
@@ -116,6 +118,7 @@ const TransactionMapWidget: React.FC<TransactionMapWidgetProps> = ({ transaction
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
   const [hoveredLocationId, setHoveredLocationId] = useState<string | null>(null);
+  const [cartoApiKey] = useLocalStorage<string>('crystal_carto_api_key', '');
 
   useEffect(() => {
     const checkDarkMode = () => document.documentElement.classList.contains('dark');
@@ -170,16 +173,11 @@ const TransactionMapWidget: React.FC<TransactionMapWidgetProps> = ({ transaction
         const label = representative.locationLabel || representative.placeName || cityName;
         const countryName = meta.countryName || representative.country || '';
 
-        // Equirectangular projection for percentage positioning
-        const projectedX = ((group.lon + 180) / 360) * 100;
-        const projectedY = ((90 - group.lat) / 180) * 100;
 
         return {
           id: group.key,
           lat: group.lat,
           lon: group.lon,
-          projectedX,
-          projectedY,
           count: group.count,
           amountTotal: group.amountTotal,
           currency: representative.currency,
@@ -217,12 +215,10 @@ const TransactionMapWidget: React.FC<TransactionMapWidgetProps> = ({ transaction
 
   const coords: [number, number][] = useMemo(() => locations.map(l => [l.lat, l.lon]), [locations]);
 
-  // CartoDB Tile Layer URL based on theme
-  const tileLayerUrl = isDarkMode
-    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-    : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
-
-  const attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
+  const { tileUrl, attribution, isCarto, subdomains } = useCartoBasemap(
+    cartoApiKey || undefined,
+    isDarkMode,
+  );
 
   if (locations.length === 0) {
     return (
@@ -268,10 +264,13 @@ const TransactionMapWidget: React.FC<TransactionMapWidgetProps> = ({ transaction
           style={{ height: '100%', width: '100%' }}
           className="z-0 bg-light-bg dark:bg-dark-bg"
           zoomControl={false}
+          attributionControl={false}
         >
           <TileLayerAny
+            key={tileUrl}
             attribution={attribution}
-            url={tileLayerUrl}
+            url={tileUrl}
+            subdomains={subdomains}
           />
           <BoundsFitter coords={coords} center={focalCenter} />
           <LeafletZoomController zoomLevel={tileZoom} />
@@ -307,6 +306,20 @@ const TransactionMapWidget: React.FC<TransactionMapWidgetProps> = ({ transaction
             );
           })}
         </MapContainerAny>
+
+        {/* Floating provider status pill */}
+        <div className="absolute bottom-2.5 left-2.5 z-[400] pointer-events-none">
+          <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg backdrop-blur-md text-[10px] font-mono shadow-md ${
+            isDarkMode
+              ? 'bg-black/60 text-slate-300'
+              : 'bg-white/80 text-slate-600'
+          }`}>
+            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+              isCarto ? 'bg-emerald-400' : 'bg-amber-400'
+            }`} />
+            {isCarto ? 'CARTO' : 'OpenStreetMap'}
+          </div>
+        </div>
       </div>
 
       {/* Floating Detail Card for Active / Hovered City */}

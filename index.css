@@ -888,3 +888,8 @@ img {
 .leaflet-tooltip-bottom.custom-map-tooltip:before {
   border-bottom-color: var(--tooltip-bg, #ffffff) !important;
 }
+
+/* Hide Leaflet bottom-right attribution strip */
+.leaflet-control-attribution {
+  display: none !important;
+}

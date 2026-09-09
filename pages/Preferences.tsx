@@ -35,7 +35,6 @@ export const Preferences: React.FC<PreferencesProps> = ({
 }) => {
   const [selectedFontCategory, setSelectedFontCategory] = useState<'all' | AppFontCategory>('all');
   const [customSpecimenText, setCustomSpecimenText] = useState('€125,480.00 • Crystal Wealth');
-  const [showTwelveDataKey, setShowTwelveDataKey] = useState(false);
 
   const currentFont: AppFont = preferences.appFont || 'plus-jakarta';
 
@@ -859,136 +858,10 @@ export const Preferences: React.FC<PreferencesProps> = ({
                 </div>
               </div>
             </div>
-
-            <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary mt-5 opacity-70 leading-relaxed">
-              Privacy Mode can always be quickly toggled from the user menu in the navigation sidebar.
-            </p>
           </div>
         </div>
       </section>
 
-      {/* ── Section 4: Intelligence & External Telemetry ── */}
-      <section className="space-y-6">
-        <div className="flex items-center justify-between px-2">
-          <div className="flex items-center gap-3">
-            <div className="w-2 h-6 bg-blue-500 rounded-full"></div>
-            <h3 className="text-sm font-bold text-light-text dark:text-dark-text tracking-tight opacity-60">
-              Intelligence & External Telemetry
-            </h3>
-          </div>
-          <button
-            type="button"
-            onClick={() => setCurrentPage('Integrations')}
-            className="text-xs font-semibold text-primary-600 dark:text-primary-400 hover:underline flex items-center gap-1 cursor-pointer"
-          >
-            <span>Open Integrations Hub</span>
-            <Icon name="arrow_forward" className="text-xs" />
-          </button>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Twelve Data Card */}
-          <div className="glass-section rounded-3xl shadow-card border border-slate-200/60 dark:border-white/5 p-6 sm:p-7 flex flex-col justify-between">
-            <div className="space-y-4">
-              <div className="flex items-start justify-between">
-                <div className="w-12 h-12 rounded-2xl bg-indigo-500 text-white flex items-center justify-center shadow-lg shadow-indigo-500/20 shrink-0">
-                  <Icon name="line_chart_up" className="text-2xl" />
-                </div>
-                <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold flex items-center gap-1.5 border ${
-                  preferences.twelveDataApiKey?.trim()
-                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
-                    : 'bg-black/5 text-gray-500 dark:bg-white/5 dark:text-gray-400 border-black/5 dark:border-white/10'
-                }`}>
-                  <span className={`w-2 h-2 rounded-full ${preferences.twelveDataApiKey?.trim() ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'}`}></span>
-                  {preferences.twelveDataApiKey?.trim() ? 'Operational' : 'Config Required'}
-                </span>
-              </div>
-
-              <div>
-                <h3 className="text-lg font-semibold text-light-text dark:text-dark-text tracking-tight">
-                  Twelve Data Telemetry
-                </h3>
-                <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary leading-relaxed opacity-70 mt-1">
-                  High-frequency engine for market rates, ETF valuations, and global currency arbitrage calculations.
-                </p>
-              </div>
-
-              <div className="relative pt-1">
-                <label htmlFor="twelve-data-key-input" className={labelStyle}>API Key</label>
-                <div className="relative">
-                  <input
-                    id="twelve-data-key-input"
-                    type={showTwelveDataKey ? 'text' : 'password'}
-                    name="twelveDataApiKey"
-                    value={preferences.twelveDataApiKey || ''}
-                    onChange={handleSelectChange}
-                    placeholder="Enter Twelve Data API key..."
-                    className={`${INPUT_BASE_STYLE} font-mono text-xs pr-12`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowTwelveDataKey((prev) => !prev)}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 cursor-pointer"
-                  >
-                    <Icon name={showTwelveDataKey ? 'visibility_off' : 'visibility'} className="text-sm" />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary mt-5 opacity-70 leading-relaxed">
-              Provides live exchange rates and real-time market data across global equities.
-            </p>
-          </div>
-
-          {/* Brandfetch Card */}
-          <div className="glass-section rounded-3xl shadow-card border border-slate-200/60 dark:border-white/5 p-6 sm:p-7 flex flex-col justify-between">
-            <div className="space-y-4">
-              <div className="flex items-start justify-between">
-                <div className="w-12 h-12 rounded-2xl bg-pink-500 text-white flex items-center justify-center shadow-lg shadow-pink-500/20 shrink-0">
-                  <Icon name="zap" className="text-2xl" />
-                </div>
-                <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold flex items-center gap-1.5 border ${
-                  preferences.brandfetchClientId?.trim()
-                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
-                    : 'bg-black/5 text-gray-500 dark:bg-white/5 dark:text-gray-400 border-black/5 dark:border-white/10'
-                }`}>
-                  <span className={`w-2 h-2 rounded-full ${preferences.brandfetchClientId?.trim() ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'}`}></span>
-                  {preferences.brandfetchClientId?.trim() ? 'Operational' : 'Optional'}
-                </span>
-              </div>
-
-              <div>
-                <h3 className="text-lg font-semibold text-light-text dark:text-dark-text tracking-tight">
-                  Brandfetch Branding
-                </h3>
-                <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary leading-relaxed opacity-70 mt-1">
-                  Metadata enrichment service for merchant identification and high-fidelity institutional branding logos.
-                </p>
-              </div>
-
-              <div className="relative pt-1">
-                <label htmlFor="brandfetch-client-id-input" className={labelStyle}>Client Access ID</label>
-                <div className="relative">
-                  <input
-                    id="brandfetch-client-id-input"
-                    type="text"
-                    name="brandfetchClientId"
-                    value={preferences.brandfetchClientId || ''}
-                    onChange={handleSelectChange}
-                    placeholder="Enter Brandfetch Client Access ID..."
-                    className={`${INPUT_BASE_STYLE} font-mono text-xs`}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary mt-5 opacity-70 leading-relaxed">
-              Enriches transaction descriptions with verified merchant vector icons and color branding.
-            </p>
-          </div>
-        </div>
-      </section>
 
       {/* Synchronization Callout Footer Banner matching PersonalInfo */}
       <div className="p-6 bg-primary-500/5 dark:bg-primary-500/10 rounded-3xl border border-primary-500/10 flex items-start gap-4">

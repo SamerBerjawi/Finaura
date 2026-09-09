@@ -1,0 +1,41 @@
+manifestVersion: 1
+id: crystal
+category: finance
+name: Crystal
+version: "2.3.0"
+tagline: Personal wealth tracker and financial portfolio intelligence
+description: >-
+  Crystal is an open-source, self-hosted personal finance and portfolio tracker designed to give you clarity and complete control over your wealth without sacrificing privacy.
+
+
+  Aggregate assets across bank accounts, crypto wallets, stocks, real estate, and physical commodities into a single intuitive dashboard with real-time valuations, analytics, and net-worth breakdowns.
+
+
+  Features:
+
+  - Comprehensive asset tracking: Track fiat cash, investments, cryptocurrency, real estate, precious metals, and loans.
+
+  - Real-time market analytics: Live asset pricing, historical charts, performance benchmarks, and distribution visualization.
+
+  - Multi-currency support: Seamless currency conversion and multi-currency portfolio valuation.
+
+  - Complete privacy: 100% self-hosted with local PostgreSQL persistence. Your financial data stays entirely on your Umbrel server.
+
+  - Modern responsive interface: Fast and accessible on desktop, tablet, and mobile.
+releaseNotes: ""
+
+developer: Samer Berjawi
+website: https://github.com/SamerBerjawi/Crystal
+dependencies: []
+repo: https://github.com/SamerBerjawi/Crystal
+support: https://github.com/SamerBerjawi/Crystal/issues
+
+port: 7157
+gallery: []
+path: ""
+
+defaultUsername: ""
+defaultPassword: ""
+
+submitter: Samer Berjawi
+submission: https://github.com/getumbrel/umbrel-apps/pull/XXXX

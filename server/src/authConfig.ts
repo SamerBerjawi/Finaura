@@ -12,7 +12,9 @@ export const AUTH_COOKIE_NAME = process.env.AUTH_COOKIE_NAME || 'crystal_session
 export const SESSION_DURATION_MS = Number(process.env.SESSION_DURATION_MS || 1000 * 60 * 60 * 12);
 export const PASSWORD_HASH_ROUNDS = Number(process.env.BCRYPT_ROUNDS || 12);
 
-const secureCookies = process.env.NODE_ENV === 'production';
+const secureCookies = process.env.AUTH_COOKIE_SECURE !== undefined
+    ? process.env.AUTH_COOKIE_SECURE === 'true'
+    : process.env.NODE_ENV === 'production';
 const cookieSameSite = (process.env.AUTH_COOKIE_SAMESITE || 'lax').toLowerCase() as 'lax' | 'strict' | 'none';
 
 export const buildSessionExpiry = () => new Date(Date.now() + SESSION_DURATION_MS);

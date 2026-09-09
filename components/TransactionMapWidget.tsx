@@ -1,7 +1,5 @@
-import React, { useMemo, useEffect, useState, useRef } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import { MapContainer, TileLayer, CircleMarker, Tooltip, useMap } from 'react-leaflet';
-import { DottedMap, type Marker } from '@/components/ui/dotted-map';
-import { Globe } from '@/components/ui/globe';
 import { countries, type TCountryCode } from 'countries-list';
 import { Transaction, Currency } from '../types';
 import { formatCurrency } from '../utils';
@@ -9,21 +7,6 @@ import L from 'leaflet';
 import Icon from './ui/Icon';
 
 type CountryCode = Lowercase<TCountryCode>;
-
-export type MyMarker = Marker & {
-  id: string;
-  overlay: {
-    countryCode: CountryCode;
-    label: string;
-    city: string;
-    country: string;
-    flagEmoji: string;
-    count: number;
-    amountTotal: number;
-    currency: string;
-    latestDescription?: string;
-  };
-};
 
 // Convert 2-letter ISO country code to flag emoji
 function getFlagEmoji(countryCode: string): string {
@@ -131,7 +114,6 @@ const TooltipAny = Tooltip as any;
 
 const TransactionMapWidget: React.FC<TransactionMapWidgetProps> = ({ transactions }) => {
   const [isDarkMode, setIsDarkMode] = useState(false);
-  const [mapMode, setMapMode] = useState<'dotted' | 'globe' | 'tile'>('dotted');
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
   const [hoveredLocationId, setHoveredLocationId] = useState<string | null>(null);
 
@@ -214,100 +196,24 @@ const TransactionMapWidget: React.FC<TransactionMapWidgetProps> = ({ transaction
       .sort((a, b) => b.count - a.count);
   }, [transactions]);
 
-  const maxCount = useMemo(() => {
-    return locations.reduce((max, loc) => Math.max(max, loc.count), 0) || 1;
-  }, [locations]);
 
   // Center coordinate calculation
-  const { focalCenter, globeFocusAngles } = useMemo(() => {
-    if (locations.length === 0) {
-      return {
-        focalCenter: [20, 0] as [number, number],
-        globeFocusAngles: [0, 0] as [number, number],
-      };
-    }
-
-    const centerLat = locations[0].lat;
-    const centerLon = locations[0].lon;
-
-    const phi = Math.PI - ((centerLon * Math.PI) / 180 - Math.PI / 2);
-    const theta = Math.sin((centerLat * Math.PI) / 180) * 0.22;
-
-    return {
-      focalCenter: [centerLat, centerLon] as [number, number],
-      globeFocusAngles: [phi, theta] as [number, number],
-    };
+  const focalCenter = useMemo((): [number, number] => {
+    if (locations.length === 0) return [20, 0];
+    return [locations[0].lat, locations[0].lon];
   }, [locations]);
 
-  // Zoom levels
-  const [dottedZoom, setDottedZoom] = useState<number>(1);
   const [tileZoom, setTileZoom] = useState<number>(3);
 
-  const handleZoomIn = () => {
-    if (mapMode === 'tile') setTileZoom(prev => Math.min(prev + 1, 18));
-    else setDottedZoom(prev => Math.min(Number((prev + 0.25).toFixed(2)), 2.5));
-  };
+  const handleZoomIn = () => setTileZoom(prev => Math.min(prev + 1, 18));
 
-  const handleZoomOut = () => {
-    if (mapMode === 'tile') setTileZoom(prev => Math.max(prev - 1, 1));
-    else setDottedZoom(prev => Math.max(Number((prev - 0.25).toFixed(2)), 0.8));
-  };
+  const handleZoomOut = () => setTileZoom(prev => Math.max(prev - 1, 1));
 
   const handleResetZoom = () => {
-    setDottedZoom(1);
     setTileZoom(3);
     setSelectedLocationId(null);
   };
 
-  // Construct DottedMap markers with refined, proportional sizing
-  const dottedMarkers: MyMarker[] = useMemo(() => {
-    return locations.map(loc => {
-      const sizeRatio = Math.min(loc.count / maxCount, 1);
-      const size = Number((0.65 + sizeRatio * 0.45).toFixed(2));
-
-      return {
-        id: loc.id,
-        lat: loc.lat,
-        lng: loc.lon,
-        size,
-        pulse: true,
-        overlay: {
-          countryCode: 'us',
-          label: loc.city,
-          city: loc.city,
-          country: loc.country,
-          flagEmoji: loc.flagEmoji,
-          count: loc.count,
-          amountTotal: Math.abs(loc.amountTotal),
-          currency: loc.currency,
-          latestDescription: loc.description,
-        },
-      };
-    });
-  }, [locations, maxCount]);
-
-  // High-contrast COBE Configuration for 3D Globe
-  const globeConfig = useMemo(() => {
-    return {
-      width: 800,
-      height: 800,
-      onRender: () => {},
-      devicePixelRatio: 2,
-      phi: globeFocusAngles[0],
-      theta: globeFocusAngles[1],
-      dark: isDarkMode ? 1 : 0,
-      diffuse: isDarkMode ? 1.4 : 1.2,
-      mapSamples: 16000,
-      mapBrightness: isDarkMode ? 2.4 : 1.8,
-      baseColor: (isDarkMode ? [0.18, 0.24, 0.36] : [0.84, 0.88, 0.94]) as [number, number, number],
-      markerColor: (isDarkMode ? [0.35, 0.75, 1.0] : [0.12, 0.45, 0.95]) as [number, number, number],
-      glowColor: (isDarkMode ? [0.12, 0.24, 0.5] : [0.92, 0.95, 1.0]) as [number, number, number],
-      markers: locations.map(loc => ({
-        location: [loc.lat, loc.lon] as [number, number],
-        size: Number((0.04 + Math.min(loc.count / maxCount, 1) * 0.05).toFixed(3)),
-      })),
-    };
-  }, [isDarkMode, locations, maxCount, globeFocusAngles]);
 
   const coords: [number, number][] = useMemo(() => locations.map(l => [l.lat, l.lon]), [locations]);
 
@@ -352,164 +258,55 @@ const TransactionMapWidget: React.FC<TransactionMapWidgetProps> = ({ transaction
             {totalTransactionsCount} {totalTransactionsCount === 1 ? 'transaction' : 'transactions'}
           </span>
         </div>
-
-        {/* Map View Switcher */}
-        <div className="pointer-events-auto flex items-center p-1 rounded-xl bg-white/85 dark:bg-black/70 backdrop-blur-md border border-black/5 dark:border-white/10 shadow-xs gap-0.5">
-          <button
-            type="button"
-            onClick={() => setMapMode('dotted')}
-            title="Dotted Matrix Map"
-            aria-label="Dotted Matrix Map"
-            className={`w-7 h-7 flex items-center justify-center rounded-lg transition-all cursor-pointer ${
-              mapMode === 'dotted'
-                ? 'bg-primary-500 text-white shadow-xs'
-                : 'text-tertiary hover:text-primary hover:bg-black/5 dark:hover:bg-white/10'
-            }`}
-          >
-            <Icon name="grid_view" className="text-base" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setMapMode('globe')}
-            title="3D Globe"
-            aria-label="3D Globe"
-            className={`w-7 h-7 flex items-center justify-center rounded-lg transition-all cursor-pointer ${
-              mapMode === 'globe'
-                ? 'bg-primary-500 text-white shadow-xs'
-                : 'text-tertiary hover:text-primary hover:bg-black/5 dark:hover:bg-white/10'
-            }`}
-          >
-            <Icon name="public" className="text-base" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setMapMode('tile')}
-            title="Street Map"
-            aria-label="Street Map"
-            className={`w-7 h-7 flex items-center justify-center rounded-lg transition-all cursor-pointer ${
-              mapMode === 'tile'
-                ? 'bg-primary-500 text-white shadow-xs'
-                : 'text-tertiary hover:text-primary hover:bg-black/5 dark:hover:bg-white/10'
-            }`}
-          >
-            <Icon name="map" className="text-base" />
-          </button>
-        </div>
       </div>
 
-      {/* Main Map Canvas / Visual Area */}
-      <div className="relative flex-1 w-full h-full min-h-[260px] overflow-hidden flex items-center justify-center">
-        {mapMode === 'dotted' ? (
-          <div className="relative w-full h-full flex items-center justify-center p-3">
-            <div
-              style={{
-                transform: `scale(${dottedZoom})`,
-                transformOrigin: 'center center',
-                transition: 'transform 0.25s cubic-bezier(0.2, 0, 0.2, 1)',
-              }}
-              className="w-full h-full max-h-[460px] flex items-center justify-center relative"
-            >
-              <DottedMap<MyMarker>
-                viewBox="0 0 150 75"
-                markers={dottedMarkers}
-                dotColor={isDarkMode ? 'rgba(255, 255, 255, 0.18)' : 'rgba(0, 0, 0, 0.16)'}
-                markerColor="#3b82f6"
-                dotRadius={0.22}
-                pulse={true}
-                className="w-full h-full"
-              />
+      {/* Main Map Canvas */}
+      <div className="relative flex-1 w-full h-full min-h-[260px] overflow-hidden">
+        <MapContainerAny
+          center={focalCenter}
+          zoom={tileZoom}
+          style={{ height: '100%', width: '100%' }}
+          className="z-0 bg-light-bg dark:bg-dark-bg"
+          zoomControl={false}
+        >
+          <TileLayerAny
+            attribution={attribution}
+            url={tileLayerUrl}
+          />
+          <BoundsFitter coords={coords} center={focalCenter} />
+          <LeafletZoomController zoomLevel={tileZoom} />
+          {locations.map(loc => {
+            const radius = Math.min(Math.max(6 + Math.log1p(loc.count) * 2.5, 7), 16);
+            const locationLabel = [loc.city, loc.country].filter(Boolean).join(', ') || 'Unknown location';
 
-              {/* Clean HTML overlay chips positioned over markers */}
-              {locations.map(loc => {
-                const isSelected = selectedLocationId === loc.id;
-                const isHovered = hoveredLocationId === loc.id;
-
-                return (
-                  <div
-                    key={loc.id}
-                    style={{
-                      left: `${loc.projectedX}%`,
-                      top: `${loc.projectedY}%`,
-                      transform: 'translate(-50%, -100%) translateY(-6px)',
-                    }}
-                    onMouseEnter={() => setHoveredLocationId(loc.id)}
-                    onMouseLeave={() => setHoveredLocationId(null)}
-                    onClick={() => setSelectedLocationId(prev => prev === loc.id ? null : loc.id)}
-                    className="absolute z-20 cursor-pointer pointer-events-auto"
-                  >
-                    <div
-                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold shadow-md transition-all select-none whitespace-nowrap ${
-                        isSelected || isHovered
-                          ? 'bg-primary-500 text-white scale-110 ring-2 ring-primary-400/50 shadow-primary-500/30'
-                          : 'bg-white/90 dark:bg-gray-900/90 text-primary border border-black/10 dark:border-white/15 hover:scale-105'
-                      }`}
-                    >
-                      <span className="text-xs leading-none">{loc.flagEmoji}</span>
-                      <span>{loc.city}</span>
-                      <span className={`text-2xs font-mono px-1 py-0.2 rounded-full ${
-                        isSelected || isHovered ? 'bg-white/20 text-white' : 'bg-black/5 dark:bg-white/10 text-secondary'
-                      }`}>
-                        {loc.count}
-                      </span>
-                    </div>
+            return (
+              <CircleMarkerAny
+                key={loc.id}
+                center={[loc.lat, loc.lon]}
+                radius={radius}
+                pathOptions={{
+                  color: '#3b82f6',
+                  weight: 2,
+                  fillColor: '#60a5fa',
+                  fillOpacity: 0.85,
+                }}
+              >
+                <TooltipAny direction="top" offset={[0, -8]} opacity={1} className="custom-map-tooltip">
+                  <div className="p-1 space-y-0.5 min-w-[120px] text-center">
+                    <p className="font-bold text-xs flex items-center justify-center gap-1">
+                      <span>{loc.flagEmoji}</span>
+                      <span>{locationLabel}</span>
+                    </p>
+                    <p className="text-xs text-tertiary">{loc.count} transactions</p>
+                    <p className="font-mono font-semibold text-xs text-green-600 dark:text-green-400">
+                      {formatCurrency(Math.abs(loc.amountTotal), loc.currency as Currency)}
+                    </p>
                   </div>
-                );
-              })}
-            </div>
-          </div>
-        ) : mapMode === 'globe' ? (
-          <div className="relative w-full h-full flex items-center justify-center p-2">
-            <div className="w-full h-full max-w-[360px] max-h-[360px] aspect-square flex items-center justify-center">
-              <Globe config={globeConfig} className="w-full h-full" />
-            </div>
-          </div>
-        ) : (
-          <MapContainerAny
-            center={focalCenter}
-            zoom={tileZoom}
-            style={{ height: '100%', width: '100%' }}
-            className="z-0 bg-light-bg dark:bg-dark-bg"
-            zoomControl={false}
-          >
-            <TileLayerAny
-              attribution={attribution}
-              url={tileLayerUrl}
-            />
-            <BoundsFitter coords={coords} center={focalCenter} />
-            <LeafletZoomController zoomLevel={tileZoom} />
-            {locations.map(loc => {
-              const radius = Math.min(Math.max(6 + Math.log1p(loc.count) * 2.5, 7), 16);
-              const locationLabel = [loc.city, loc.country].filter(Boolean).join(', ') || 'Unknown location';
-
-              return (
-                <CircleMarkerAny
-                  key={loc.id}
-                  center={[loc.lat, loc.lon]}
-                  radius={radius}
-                  pathOptions={{
-                    color: '#3b82f6',
-                    weight: 2,
-                    fillColor: '#60a5fa',
-                    fillOpacity: 0.85,
-                  }}
-                >
-                  <TooltipAny direction="top" offset={[0, -8]} opacity={1} className="custom-map-tooltip">
-                    <div className="p-1 space-y-0.5 min-w-[120px] text-center">
-                      <p className="font-bold text-xs flex items-center justify-center gap-1">
-                        <span>{loc.flagEmoji}</span>
-                        <span>{locationLabel}</span>
-                      </p>
-                      <p className="text-xs text-tertiary">{loc.count} transactions</p>
-                      <p className="font-mono font-semibold text-xs text-green-600 dark:text-green-400">
-                        {formatCurrency(Math.abs(loc.amountTotal), loc.currency as Currency)}
-                      </p>
-                    </div>
-                  </TooltipAny>
-                </CircleMarkerAny>
-              );
-            })}
-          </MapContainerAny>
-        )}
+                </TooltipAny>
+              </CircleMarkerAny>
+            );
+          })}
+        </MapContainerAny>
       </div>
 
       {/* Floating Detail Card for Active / Hovered City */}
@@ -608,7 +405,7 @@ const TransactionMapWidget: React.FC<TransactionMapWidgetProps> = ({ transaction
           className="px-1.5 h-6 flex items-center justify-center rounded-lg hover:bg-black/5 dark:hover:bg-white/10 text-xs font-mono text-tertiary hover:text-primary transition-colors cursor-pointer"
           title="Reset Zoom"
         >
-          {mapMode === 'tile' ? `${Math.round((tileZoom / 3) * 100)}%` : `${Math.round(dottedZoom * 100)}%`}
+          {`${Math.round((tileZoom / 3) * 100)}%`}
         </button>
       </div>
     </div>
